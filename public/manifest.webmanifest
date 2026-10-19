@@ -1,0 +1,18 @@
+{
+  "name": "Zac — private payments by name",
+  "short_name": "Zac",
+  "description": "Private Zcash payments by name. Claim @you, share a link, send shielded ZEC.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#08080a",
+  "theme_color": "#08080a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

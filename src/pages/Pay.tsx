@@ -1,0 +1,367 @@
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  Lock,
+  ShieldCheck,
+  Sparkles,
+  Wallet
+} from 'lucide-react'
+import { useMemo, useState, useEffect } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { zecToZatoshi, isValidAmount } from '../../shared/amount'
+import { buildPaymentMemo } from '../../shared/memo'
+import { buildZip321Uri, decodePaymentPayload } from '../../shared/paylink'
+import type { PaymentPayload } from '../../shared/types'
+import { Avatar } from '../components/Avatar'
+import { CopyButton } from '../components/CopyButton'
+import { NetworkBadge } from '../components/NetworkBadge'
+import { Qr } from '../components/Qr'
+import { Spinner } from '../components/Spinner'
+import { formatAmount } from '../../shared/amount'
+import { shortAddress, timeAgo } from '../lib/format'
+import { useDirectory } from '../lib/directory'
+import { useToast } from '../lib/toast'
+import { useWallet } from '../lib/walletContext'
+import { useWalletData } from '../lib/useWalletData'
+
+export function PayPage() {
+  const { payload: encoded } = useParams<{ payload: string }>()
+  const { status, connection, connect, adapter, demoMode } = useWallet()
+  const { resolve, findByAddress, loading: directoryLoading } = useDirectory()
+  const { balance, refresh: refreshWallet } = useWalletData(status === 'connected')
+  const toast = useToast()
+
+  const decoded = useMemo(() => {
+    if (!encoded) return { ok: false as const, error: 'Missing payment request.' }
+    return decodePaymentPayload(encoded)
+  }, [encoded])
+
+  const payload: PaymentPayload | null = decoded.ok ? decoded.payload : null
+  const claim = payload?.h ? resolve(payload.h) : undefined
+  const ownClaim = connection ? findByAddress(connection.address) : undefined
+
+  const [customAmount, setCustomAmount] = useState('')
+  const [sending, setSending] = useState(false)
+  const [txid, setTxid] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [showAddress, setShowAddress] = useState(false)
+
+  useEffect(() => {
+    setCustomAmount('')
+    setTxid(null)
+    setError(null)
+  }, [payload?.i])
+
+  const amount = payload?.a ?? customAmount
+  const amountValid = isValidAmount(amount) && Number(amount) > 0
+  const handleMismatch = Boolean(payload?.h && claim && claim.address !== payload.to)
+  const handleMissing = Boolean(payload?.h && !claim && !directoryLoading)
+  const directoryChecking = Boolean(payload?.h) && !claim && directoryLoading
+  const networkMismatch = Boolean(payload && connection && payload.net !== connection.network)
+  const selfRequest = Boolean(payload && connection && payload.to === connection.address)
+  const canPay =
+    Boolean(payload) &&
+    Boolean(connection) &&
+    !handleMismatch &&
+    !handleMissing &&
+    !directoryChecking &&
+    !networkMismatch &&
+    amountValid &&
+    !sending
+  const memo = payload
+    ? buildPaymentMemo({ invoiceId: payload.i, from: ownClaim?.username, note: payload.m })
+    : ''
+  const zipUri = useMemo(
+    () =>
+      payload
+        ? buildZip321Uri({ ...payload, a: payload.a ?? (amountValid ? amount : undefined) })
+        : '',
+    [payload, amount, amountValid]
+  )
+
+  async function handlePay() {
+    if (!payload || !connection) return
+    setError(null)
+    if (!amountValid) {
+      setError('Enter an amount with up to 8 decimal places.')
+      return
+    }
+    if (handleMismatch || handleMissing) {
+      setError('This link does not match the claimed name. Refusing to pay.')
+      return
+    }
+    if (payload.h && !claim && directoryLoading) {
+      setError('Still checking the name. Try again in a moment.')
+      return
+    }
+    if (networkMismatch) {
+      setError('This request is for a different network than your wallet.')
+      return
+    }
+    if (balance && zecToZatoshi(amount) > zecToZatoshi(balance.shielded)) {
+      setError('That is more than your shielded balance.')
+      return
+    }
+    setSending(true)
+    try {
+      const hash = await adapter.send({ to: payload.to, amount, memo })
+      setTxid(hash)
+      await refreshWallet()
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'The payment did not go through.'
+      setError(message)
+      toast.error(message)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function handleConnect() {
+    try {
+      await connect()
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Could not connect the wallet.')
+    }
+  }
+
+  if (!decoded.ok) {
+    return (
+      <div className="page narrow-page">
+        <div className="card error-card">
+          <span className="icon-orb danger"><AlertTriangle size={24} /></span>
+          <h1>This link cannot be read</h1>
+          <p className="muted">{decoded.error}</p>
+          <Link to="/" className="btn btn-primary">Back to Zac</Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (!payload) return null
+
+  if (txid) {
+    return (
+      <div className="page narrow-page">
+        <div className="card success-card pay-success">
+          <div className="success-orb">
+            <Check size={30} />
+          </div>
+          <p className="eyebrow">Shielded payment</p>
+          <h1>Paid privately</h1>
+          <p className="success-amount">{formatAmount(amount)} <span>ZEC</span></p>
+          <p className="muted">
+            to {claim ? `@${claim.username}` : shortAddress(payload.to, 12, 8)}
+          </p>
+          <div className="txid-box">
+            <span>Transaction</span>
+            <code>{txid}</code>
+            <CopyButton value={txid} iconOnly />
+          </div>
+          <p className="muted small">
+            {demoMode
+              ? 'Demo payment — no real ZEC moved.'
+              : 'The recipient can decrypt the receipt memo. Nobody else can see the payment details on-chain.'}
+          </p>
+          <div className="success-actions">
+            <Link to="/" className="btn btn-primary">Done</Link>
+            <Link to="/receive" className="btn btn-secondary">Receive</Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="page pay-page">
+      <div className="pay-wrap">
+        <section className="card pay-card">
+          <div className="card-topline">
+            <span className="chip chip-gold">
+              <ShieldCheck size={14} /> Private payment request
+            </span>
+            <NetworkBadge network={payload.net} />
+          </div>
+
+          <div className="pay-from">
+            <Avatar
+              seed={claim?.address ?? payload.to}
+              label={payload.h ? `@${payload.h}` : claim ? `@${claim.username}` : undefined}
+              size={52}
+            />
+            <div>
+              <p className="eyebrow">
+                {handleMismatch
+                  ? 'Name mismatch'
+                  : claim
+                    ? 'Pay'
+                    : payload.h
+                      ? 'Unverified name'
+                      : 'Shielded address'}
+              </p>
+              <h1>{payload.h ? `@${payload.h}` : shortAddress(payload.to, 10, 8)}</h1>
+              {claim && !handleMismatch ? (
+                <span className="verified-line">
+                  <ShieldCheck size={13} /> Verified name · {timeAgo(payload.t)}
+                </span>
+              ) : handleMismatch ? (
+                <span className="verified-line danger">
+                  <AlertTriangle size={13} /> Does not match this link
+                </span>
+              ) : payload.h ? (
+                <span className="verified-line warn">
+                  <AlertTriangle size={13} /> Name not verified
+                </span>
+              ) : (
+                <span className="verified-line">
+                  <AlertTriangle size={13} /> Address-only request
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="pay-amount-block">
+            {payload.a ? (
+              <div className="pay-amount">
+                {formatAmount(payload.a)} <span>ZEC</span>
+              </div>
+            ) : (
+              <label className="field pay-amount-field">
+                <span>Amount</span>
+                <div className="amount-input">
+                  <input
+                    value={customAmount}
+                    onChange={(event) => setCustomAmount(event.target.value.replace(',', '.'))}
+                    placeholder="0.00"
+                    inputMode="decimal"
+                    autoFocus
+                    className={customAmount && !amountValid ? 'is-invalid' : undefined}
+                  />
+                  <span className="amount-suffix">ZEC</span>
+                </div>
+                {!amountValid && customAmount ? (
+                  <span className="field-hint tone-error">Enter a valid amount.</span>
+                ) : null}
+              </label>
+            )}
+            {payload.m ? (
+              <blockquote className="pay-note">
+                <Lock size={13} />
+                <span>{payload.m}</span>
+              </blockquote>
+            ) : null}
+          </div>
+
+          <button type="button" className="pay-address-toggle" onClick={() => setShowAddress((value) => !value)}>
+            <span>Recipient address</span>
+            <span className="mono">{shortAddress(payload.to, 14, 10)}</span>
+            <ChevronDown size={15} className={showAddress ? 'rotate-180' : ''} />
+          </button>
+          {showAddress ? (
+            <div className="pay-address-full">
+              <code>{payload.to}</code>
+              <CopyButton value={payload.to} iconOnly />
+            </div>
+          ) : null}
+
+          {handleMismatch ? (
+            <div className="alert alert-danger">
+              <AlertTriangle size={16} />
+              <span>
+                This link claims to be @{payload.h}, but that name resolves to a different address. Do not pay it.
+              </span>
+            </div>
+          ) : null}
+          {handleMissing && !directoryLoading ? (
+            <div className="alert alert-danger">
+              <AlertTriangle size={16} />
+              <span>@{payload.h} is not in the Zac directory. This link could be forged.</span>
+            </div>
+          ) : null}
+          {networkMismatch ? (
+            <div className="alert alert-warning">
+              <AlertTriangle size={16} />
+              <span>
+                This request is on {payload.net}; your wallet is on {connection?.network}. Install the matching
+                Noir build or open the request in a {payload.net} wallet.
+              </span>
+            </div>
+          ) : null}
+          {selfRequest ? (
+            <div className="alert alert-info">
+              <Sparkles size={16} />
+              <span>This is your own payment request. You can still test the flow.</span>
+            </div>
+          ) : null}
+          {!payload.a && amountValid && balance ? (
+            <p className="field-hint">Available: {formatAmount(balance.shielded)} ZEC shielded.</p>
+          ) : null}
+
+          {status === 'connected' && connection ? (
+            <button type="button" className="btn btn-primary btn-block btn-lg" disabled={!canPay} onClick={() => void handlePay()}>
+              {handleMismatch || handleMissing ? (
+                <>
+                  <Lock size={17} /> Payment blocked
+                </>
+              ) : sending ? (
+                <>
+                  <Spinner /> Waiting for wallet approval…
+                </>
+              ) : (
+                <>
+                  <Lock size={17} /> {amountValid ? `Pay ${formatAmount(amount)} ZEC privately` : 'Enter an amount'}
+                </>
+              )}
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn btn-primary btn-block btn-lg"
+                onClick={() => void handleConnect()}
+                disabled={status === 'unavailable'}
+              >
+                <Wallet size={17} /> Connect Noir Wallet
+              </button>
+              {status === 'unavailable' ? (
+                <p className="field-hint">
+                  Noir Wallet is not installed. <Link to="/settings">Set it up</Link>, or pay from any wallet
+                  with the QR below.
+                </p>
+              ) : null}
+            </>
+          )}
+
+          {error ? <p className="form-error">{error}</p> : null}
+          <div className="pay-privacy-line">
+            <Lock size={13} />
+            <span>This request is decoded in your browser. Our server never saw it.</span>
+          </div>
+        </section>
+
+        <aside className="card pay-side">
+          <p className="eyebrow">Any wallet</p>
+          <h2>Pay from another wallet</h2>
+          <p className="muted small">
+            Scan this ZIP-321 request with Zashi, Zodl, Zingo!, Ywallet or any wallet that supports shielded
+            payments.
+          </p>
+          <Qr value={zipUri} size={190} />
+          <div className="pay-side-code">
+            <code>{zipUri}</code>
+          </div>
+          <div className="pay-side-actions">
+            <CopyButton value={zipUri} label="Copy URI" />
+            <CopyButton value={payload.to} label="Copy address" />
+          </div>
+          <div className="pay-side-foot">
+            <ShieldCheck size={14} />
+            <span>Only shielded addresses are accepted by Zac.</span>
+          </div>
+        </aside>
+      </div>
+      <Link to="/" className="back-home"><ArrowLeft size={15} /> Back home</Link>
+    </div>
+  )
+}
