@@ -43,6 +43,8 @@ export interface PaymentPayload {
 export interface ParsedPaymentMemo {
   invoiceId?: string
   from?: string
+  /** base64url signature over buildReceiptMessage(), for zac2 memos. */
+  signature?: string
   note?: string
   raw: string
 }

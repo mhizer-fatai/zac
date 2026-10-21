@@ -1,7 +1,12 @@
+import { sha256 } from '@noble/hashes/sha2.js'
 import type { ParsedPaymentMemo } from './types'
 
 export const MEMO_MAX_BYTES = 512
 const TAG = 'zac1'
+/** Signed receipts: zac2|<invoice>|@<sender>|<signature>|<note> */
+const SIGNED_TAG = 'zac2'
+/** A 65-byte compact signature, base64url without padding. */
+export const RECEIPT_SIGNATURE_CHARS = 87
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
@@ -34,12 +39,15 @@ export function buildPaymentMemo(params: {
   invoiceId?: string
   from?: string
   note?: string
+  /** Sender's signature over buildReceiptMessage(); only valid with `from`. */
+  signature?: string
 }): string {
   const id = (params.invoiceId ?? '-').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32) || '-'
   const from = params.from
     ? `@${params.from.replace(/^@+/, '').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20)}`
     : '-'
-  const base = `${TAG}|${id}|${from}|`
+  const signature = params.from && params.signature ? params.signature.replace(/[^a-zA-Z0-9_-]/g, '') : ''
+  const base = signature ? `${SIGNED_TAG}|${id}|${from}|${signature}|` : `${TAG}|${id}|${from}|`
   const note = (params.note ?? '').replace(/\u0000/g, '').trim()
   const room = MEMO_MAX_BYTES - utf8Length(base)
   if (room <= 0) return base.slice(0, MEMO_MAX_BYTES)
@@ -53,17 +61,46 @@ export function parsePaymentMemo(memo?: string): ParsedPaymentMemo | null {
   if (!memo) return null
   const raw = cleanMemo(memo)
   if (!raw) return null
-  if (!raw.startsWith(`${TAG}|`)) {
+  const signed = raw.startsWith(`${SIGNED_TAG}|`)
+  if (!signed && !raw.startsWith(`${TAG}|`)) {
     return { raw }
   }
   const parts = raw.split('|')
-  const [, invoiceId, from, ...noteParts] = parts
+  const [, invoiceId, from] = parts
+  const signature = signed ? parts[3] : undefined
+  const noteParts = parts.slice(signed ? 4 : 3)
   return {
     invoiceId: invoiceId && invoiceId !== '-' ? invoiceId : undefined,
     from: from && from !== '-' ? from : undefined,
+    signature: signature && from && from !== '-' ? signature : undefined,
     note: noteParts.length ? noteParts.join('|').trim() || undefined : undefined,
     raw
   }
+}
+
+/**
+ * The message a payer's wallet signs to prove a receipt's @sender. It binds
+ * the name to this recipient and invoice, so a signed receipt cannot be
+ * replayed into a payment to anyone else. Built from the parsed memo fields
+ * so payer and recipient sign/verify exactly the same text.
+ *
+ * The note is committed by its SHA-256 so the signed message is pure ASCII:
+ * the Noir SDK encodes the message length in UTF-16 code units rather than
+ * bytes, so non-ASCII text would not verify consistently.
+ */
+export function buildReceiptMessage(params: {
+  from: string
+  to: string
+  invoiceId?: string
+  note?: string
+}): string {
+  return [
+    'Zac payment receipt',
+    `from: ${params.from.replace(/^@+/, '')}`,
+    `to: ${params.to}`,
+    `invoice: ${params.invoiceId ?? '-'}`,
+    `note-sha256: ${bytesToHex(sha256(encoder.encode(params.note ?? '')))}`
+  ].join('\n')
 }
 
 export function memoPreview(memo?: string): string {

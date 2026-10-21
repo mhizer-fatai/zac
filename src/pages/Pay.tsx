@@ -11,17 +11,18 @@ import {
 import { useMemo, useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { zecToZatoshi, isValidAmount } from '../../shared/amount'
-import { buildPaymentMemo } from '../../shared/memo'
 import { buildZip321Uri, decodePaymentPayload } from '../../shared/paylink'
 import type { PaymentPayload } from '../../shared/types'
 import { Avatar } from '../components/Avatar'
 import { CopyButton } from '../components/CopyButton'
 import { NetworkBadge } from '../components/NetworkBadge'
 import { Qr } from '../components/Qr'
+import { RevealNameToggle, useRevealName } from '../components/RevealName'
 import { Spinner } from '../components/Spinner'
 import { formatAmount } from '../../shared/amount'
 import { shortAddress, timeAgo } from '../lib/format'
 import { useDirectory } from '../lib/directory'
+import { buildReceiptMemo } from '../lib/receipt'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
 import { useWalletData } from '../lib/useWalletData'
@@ -41,6 +42,7 @@ export function PayPage() {
   const payload: PaymentPayload | null = decoded.ok ? decoded.payload : null
   const claim = payload?.h ? resolve(payload.h) : undefined
   const ownClaim = connection ? findByAddress(connection.address) : undefined
+  const [revealName, setRevealName] = useRevealName()
 
   const [customAmount, setCustomAmount] = useState('')
   const [sending, setSending] = useState(false)
@@ -70,9 +72,6 @@ export function PayPage() {
     !networkMismatch &&
     amountValid &&
     !sending
-  const memo = payload
-    ? buildPaymentMemo({ invoiceId: payload.i, from: ownClaim?.username, note: payload.m })
-    : ''
   const zipUri = useMemo(
     () =>
       payload
@@ -106,6 +105,13 @@ export function PayPage() {
     }
     setSending(true)
     try {
+      const memo = await buildReceiptMemo({
+        adapter,
+        to: payload.to,
+        invoiceId: payload.i,
+        from: revealName ? ownClaim?.username : undefined,
+        note: payload.m
+      })
       const hash = await adapter.send({ to: payload.to, amount, memo })
       setTxid(hash)
       await refreshWallet()
@@ -297,21 +303,24 @@ export function PayPage() {
           ) : null}
 
           {status === 'connected' && connection ? (
-            <button type="button" className="btn btn-primary btn-block btn-lg" disabled={!canPay} onClick={() => void handlePay()}>
-              {handleMismatch || handleMissing ? (
-                <>
-                  <Lock size={17} /> Payment blocked
-                </>
-              ) : sending ? (
-                <>
-                  <Spinner /> Waiting for wallet approval…
-                </>
-              ) : (
-                <>
-                  <Lock size={17} /> {amountValid ? `Pay ${formatAmount(amount)} ZEC privately` : 'Enter an amount'}
-                </>
-              )}
-            </button>
+            <>
+              <RevealNameToggle handle={ownClaim?.username} reveal={revealName} onChange={setRevealName} />
+              <button type="button" className="btn btn-primary btn-block btn-lg" disabled={!canPay} onClick={() => void handlePay()}>
+                {handleMismatch || handleMissing ? (
+                  <>
+                    <Lock size={17} /> Payment blocked
+                  </>
+                ) : sending ? (
+                  <>
+                    <Spinner /> Waiting for wallet approval…
+                  </>
+                ) : (
+                  <>
+                    <Lock size={17} /> {amountValid ? `Pay ${formatAmount(amount)} ZEC privately` : 'Enter an amount'}
+                  </>
+                )}
+              </button>
+            </>
           ) : (
             <>
               <button

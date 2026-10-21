@@ -16,9 +16,11 @@ import { validateUsername } from '../../shared/username'
 import { Avatar } from '../components/Avatar'
 import { CopyButton } from '../components/CopyButton'
 import { NetworkBadge } from '../components/NetworkBadge'
+import { RevealNameToggle, useRevealName } from '../components/RevealName'
 import { Spinner } from '../components/Spinner'
 import { bytesLength, shortAddress } from '../lib/format'
 import { useDirectory } from '../lib/directory'
+import { buildReceiptMemo } from '../lib/receipt'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
 import { useWalletData } from '../lib/useWalletData'
@@ -76,6 +78,8 @@ export function SendPage() {
     [recipientInput, resolve, findByAddress]
   )
   const ownClaim = connection ? findByAddress(connection.address) : undefined
+  const [revealName, setRevealName] = useRevealName()
+  const fromName = revealName ? ownClaim?.username : undefined
   const recipient = resolved.recipient
   const networkMismatch =
     Boolean(recipient && connection && recipient.network !== connection.network)
@@ -97,10 +101,10 @@ export function SendPage() {
     () =>
       buildPaymentMemo({
         invoiceId,
-        from: ownClaim?.username,
+        from: fromName,
         note
       }),
-    [invoiceId, ownClaim?.username, note]
+    [invoiceId, fromName, note]
   )
 
   useEffect(() => {
@@ -139,7 +143,10 @@ export function SendPage() {
     }
     setSending(true)
     try {
-      const hash = await adapter.send({ to: recipient.address, amount, memo })
+      // Signed only if the payer chose to reveal their name. Memo contents
+      // do not change the ZIP-317 fee, so the Max estimate above still holds.
+      const receipt = await buildReceiptMemo({ adapter, to: recipient.address, invoiceId, from: fromName, note })
+      const hash = await adapter.send({ to: recipient.address, amount, memo: receipt })
       setTxid(hash)
       setLastAmount(amount)
       setLastRecipient(recipient)
@@ -309,6 +316,8 @@ export function SendPage() {
             </span>
           </label>
 
+          <RevealNameToggle handle={ownClaim?.username} reveal={revealName} onChange={setRevealName} />
+
           <button type="button" className="btn btn-primary btn-block btn-lg" disabled={!canSend} onClick={() => void handleSend()}>
             {sending ? (
               <>
@@ -354,7 +363,7 @@ export function SendPage() {
           </div>
           <div className="preview-row">
             <span>Receipt memo</span>
-            <span className="mono small">{ownClaim ? `from @${ownClaim.username}` : 'private receipt'}</span>
+            <span className="mono small">{fromName ? `from @${fromName}` : 'no sender name'}</span>
           </div>
           {note ? <blockquote className="preview-note">{note}</blockquote> : null}
           <div className="preview-foot">

@@ -5,6 +5,8 @@ import { verifyMessageSignature } from '@noir-wallet/sdk'
 
 import { classifyAddress } from '../address'
 import type { Claim } from '../types'
+import { buildReceiptMemo, receiptSender } from '../../src/lib/receipt'
+import type { WalletAdapter } from '../../src/lib/wallet'
 import { bech32Encode, decodeUnifiedAddress, encodeUnifiedAddress, f4jumble, f4jumbleInv } from '../zip316'
 import {
   addAmounts,
@@ -69,7 +71,8 @@ function signZcashMessage(message: string, secret: Uint8Array): string {
   const enc = (value: string) => new TextEncoder().encode(value)
   const prefix = enc('Zcash Signed Message:\n')
   const body = enc(message)
-  const payload = Uint8Array.from([prefix.length, ...prefix, body.length, ...body])
+  const size = (n: number) => (n < 0xfd ? [n] : [0xfd, n & 0xff, n >> 8])
+  const payload = Uint8Array.from([...size(prefix.length), ...prefix, ...size(body.length), ...body])
   const sha = (data: Uint8Array) => createHash('sha256').update(data).digest()
   const recovered = secp256k1.sign(sha(sha(payload)), secret, { prehash: false, format: 'recovered' })
   const out = new Uint8Array(65)
@@ -268,5 +271,63 @@ describe('claim signatures', () => {
     expect(verifyClaim({ ...record, signature: attacker })).toBe(false)
     // Nor swap the address under an existing signature.
     expect(verifyClaim({ ...record, address: encodeUnifiedAddress('utest', [{ typecode: 2, data: fromHex(SAPLING_RAW) }]) })).toBe(false)
+  })
+})
+
+describe('signed receipts', () => {
+  const secret = secp256k1.utils.randomSecretKey()
+  let signCalls = 0
+  const adapter = {
+    signMessage: async (message: string) => {
+      signCalls += 1
+      return { signature: signZcashMessage(message, secret), pubkey: '' }
+    }
+  } as unknown as WalletAdapter
+  const bobPubkey = () => {
+    const message = 'probe'
+    return verifyMessageSignature({ message, signature: signZcashMessage(message, secret), network: 'testnet' })
+      .recoveredPubkey
+  }
+  const bob = { username: 'bob', network: 'testnet', pubkey: bobPubkey() } as Claim
+  const context = (recipient: string, claim: Claim | null = bob) => ({
+    recipient,
+    network: 'testnet' as const,
+    resolve: (name: string) => (name === 'bob' && claim ? claim : undefined)
+  })
+
+  it('verifies a receipt signed by the name owner', async () => {
+    const memo = await buildReceiptMemo({ adapter, to: TESTNET_UA, invoiceId: 'inv1', from: 'bob', note: 'coffee' })
+    expect(memo.startsWith('zac2|inv1|@bob|')).toBe(true)
+    const parsed = parsePaymentMemo(memo)
+    expect(parsed).toMatchObject({ invoiceId: 'inv1', from: '@bob', note: 'coffee' })
+    expect(receiptSender(parsed, context(TESTNET_UA))).toEqual({ name: 'bob', verified: true })
+  })
+
+  it('still verifies when a long note is truncated to fit the memo', async () => {
+    const memo = await buildReceiptMemo({ adapter, to: TESTNET_UA, invoiceId: 'inv2', from: 'bob', note: 'é'.repeat(400) })
+    expect(new TextEncoder().encode(memo).length).toBeLessThanOrEqual(512)
+    expect(receiptSender(parsePaymentMemo(memo), context(TESTNET_UA))?.verified).toBe(true)
+  })
+
+  it('rejects replays, edits, unsigned names and blank keys', async () => {
+    const memo = await buildReceiptMemo({ adapter, to: TESTNET_UA, invoiceId: 'inv3', from: 'bob', note: 'rent' })
+    const parsed = parsePaymentMemo(memo)!
+    const otherRecipient = encodeUnifiedAddress('utest', [{ typecode: 2, data: fromHex(SAPLING_RAW) }])
+    expect(receiptSender(parsed, context(otherRecipient))?.verified).toBe(false)
+    expect(receiptSender({ ...parsed, note: 'rent x2' }, context(TESTNET_UA))?.verified).toBe(false)
+    expect(receiptSender(parsePaymentMemo('zac1|inv3|@bob|rent'), context(TESTNET_UA))).toEqual({
+      name: 'bob',
+      verified: false
+    })
+    expect(receiptSender(parsed, context(TESTNET_UA, { ...bob, pubkey: '' }))?.verified).toBe(false)
+    expect(receiptSender(parsed, context(TESTNET_UA, null))?.verified).toBe(false)
+  })
+
+  it('does not ask the wallet to sign when the payer stays anonymous', async () => {
+    signCalls = 0
+    const memo = await buildReceiptMemo({ adapter, to: TESTNET_UA, invoiceId: 'inv4', note: 'gift' })
+    expect(signCalls).toBe(0)
+    expect(memo).toBe('zac1|inv4|-|gift')
+    expect(receiptSender(parsePaymentMemo(memo), context(TESTNET_UA))).toBeNull()
   })
 })

@@ -44,11 +44,33 @@ The receipt memo is a 512-byte encrypted note attached to a shielded output. Zac
 is:
 
 ```
-zac1|<invoiceId>|<@sender or ->|<note>
+zac1|<invoiceId>|-|<note>                         anonymous (default)
+zac2|<invoiceId>|@<sender>|<signature>|<note>     payer chose to reveal their name
 ```
 
 The recipient's wallet decrypts it with its incoming viewing key. It is not public. The payer's
 wallet stores the outgoing memo locally.
+
+**Anonymous by default.** A receipt carries no sender unless the payer ticks "Sign the receipt as
+@name". The choice is remembered only in that browser.
+
+**Signed sender names.** A name typed into a memo proves nothing — anyone can write `@alice`. When
+the payer reveals their name, their wallet signs
+
+```
+Zac payment receipt
+from: <name>
+to: <recipient shielded address>
+invoice: <invoiceId>
+note-sha256: <hex>
+```
+
+with the same derived key that claimed the name. The recipient's Zac checks it against that name's
+pubkey in the locally verified directory and shows **verified** or **unverified**. Binding the
+recipient address and invoice means a signed receipt cannot be replayed into a payment to someone
+else. The note is committed by hash so the signed text is pure ASCII (the Noir SDK's message
+envelope counts UTF-16 code units, not bytes, for its length prefix). Revealing costs one extra
+wallet approval; anonymous payments need none.
 
 ## 3. Payment links
 
