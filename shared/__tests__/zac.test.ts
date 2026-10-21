@@ -4,6 +4,7 @@ import { secp256k1 } from '@noble/curves/secp256k1.js'
 import { verifyMessageSignature } from '@noir-wallet/sdk'
 
 import { classifyAddress } from '../address'
+import type { Claim } from '../types'
 import { bech32Encode, decodeUnifiedAddress, encodeUnifiedAddress, f4jumble, f4jumbleInv } from '../zip316'
 import {
   addAmounts,
@@ -14,7 +15,7 @@ import {
   zatoshiToZec,
   zecToZatoshi
 } from '../amount'
-import { buildClaimMessage } from '../claim'
+import { buildClaimMessage, verifyClaim } from '../claim'
 import {
   buildPaymentMemo,
   cleanMemo,
@@ -64,6 +65,18 @@ const SAPLING_RAW = '88533c398a49c2513dc85162bf220abaf47dc983f14e908ddaaa7322dba
 const ORCHARD_RAW = '31844683a07bf8e30057902b0d23e2b2ce9cad0b22190238ca4f329da92c7979052b00f735cb210671bdb0'
 const fromHex = (hex: string) => Uint8Array.from(hex.match(/.{2}/g)!, (byte) => parseInt(byte, 16))
 const toHex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+function signZcashMessage(message: string, secret: Uint8Array): string {
+  const enc = (value: string) => new TextEncoder().encode(value)
+  const prefix = enc('Zcash Signed Message:\n')
+  const body = enc(message)
+  const payload = Uint8Array.from([prefix.length, ...prefix, body.length, ...body])
+  const sha = (data: Uint8Array) => createHash('sha256').update(data).digest()
+  const recovered = secp256k1.sign(sha(sha(payload)), secret, { prehash: false, format: 'recovered' })
+  const out = new Uint8Array(65)
+  out[0] = 31 + recovered[0]
+  out.set(recovered.slice(1), 1)
+  return Buffer.from(out).toString('hex')
+}
 const TESTNET_UA = encodeUnifiedAddress('utest', [{ typecode: 3, data: fromHex(ORCHARD_RAW) }])
 
 describe('addresses', () => {
@@ -230,5 +243,30 @@ describe('claim signatures', () => {
     const result = verifyMessageSignature({ message, signature, network: 'testnet' })
     expect(result.valid).toBe(true)
     expect(result.recoveredPubkey).toMatch(/^04[0-9a-f]{128}$/)
+  })
+
+  it('accepts a real directory record and rejects forged ones', () => {
+    const address = TESTNET_UA
+    const message = buildClaimMessage({ username: 'alice', address, network: 'testnet', nonce: 'b'.repeat(32) })
+    const secret = secp256k1.utils.randomSecretKey()
+    const signature = signZcashMessage(message, secret)
+    const pubkey = verifyMessageSignature({ message, signature, network: 'testnet' }).recoveredPubkey
+    const record: Claim = {
+      username: 'alice',
+      address,
+      network: 'testnet',
+      pubkey,
+      signature,
+      message,
+      createdAt: 0,
+      updatedAt: 0
+    }
+    expect(verifyClaim(record)).toBe(true)
+    // A server cannot blank the pubkey to make any signature pass.
+    const attacker = signZcashMessage(message, secp256k1.utils.randomSecretKey())
+    expect(verifyClaim({ ...record, pubkey: '', signature: attacker })).toBe(false)
+    expect(verifyClaim({ ...record, signature: attacker })).toBe(false)
+    // Nor swap the address under an existing signature.
+    expect(verifyClaim({ ...record, address: encodeUnifiedAddress('utest', [{ typecode: 2, data: fromHex(SAPLING_RAW) }]) })).toBe(false)
   })
 })

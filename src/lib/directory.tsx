@@ -1,4 +1,3 @@
-import { verifyMessageSignature } from '@noir-wallet/sdk'
 import {
   createContext,
   useCallback,
@@ -10,9 +9,8 @@ import {
   type ReactNode
 } from 'react'
 import type { Claim, DirectorySnapshot } from '../../shared/types'
-import { classifyAddress } from '../../shared/address'
-import { buildClaimMessage } from '../../shared/claim'
-import { normalizeUsername, validateUsername } from '../../shared/username'
+import { verifyClaim } from '../../shared/claim'
+import { normalizeUsername } from '../../shared/username'
 import { loadDirectory } from './api'
 
 const CACHE_KEY = 'zac.directory.cache.v1'
@@ -29,33 +27,6 @@ interface DirectoryContextValue {
 }
 
 const DirectoryContext = createContext<DirectoryContextValue | null>(null)
-
-function verifyClaim(claim: Claim): boolean {
-  try {
-    const username = validateUsername(claim.username)
-    if (!username.ok || username.username !== claim.username) return false
-    const address = classifyAddress(claim.address)
-    if (address.kind !== 'shielded' || address.network !== claim.network) return false
-    const nonce = /(?:^|\n)nonce: ([a-f0-9]{32})$/i.exec(claim.message)?.[1]
-    if (!nonce) return false
-    const expected = buildClaimMessage({
-      username: claim.username,
-      address: claim.address,
-      network: claim.network,
-      nonce
-    })
-    if (expected !== claim.message) return false
-    const result = verifyMessageSignature({
-      message: claim.message,
-      signature: claim.signature,
-      pubkey: claim.pubkey,
-      network: claim.network
-    })
-    return result.valid
-  } catch {
-    return false
-  }
-}
 
 function readCache(): { snapshot: DirectorySnapshot; fetchedAt: number } | null {
   try {
