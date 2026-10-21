@@ -24,7 +24,24 @@ const startedAt = Date.now()
 
 /* ------------------------------------------------------------------ */
 /* Privacy headers. No analytics, no third-party origins, no framing. */
+/* The CSP makes "no third-party requests" a browser-enforced rule:    */
+/* even injected or compromised code cannot fetch, load or beacon to   */
+/* another origin. Everything Zac needs is bundled and same-origin.    */
 /* ------------------------------------------------------------------ */
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'none'",
+  "script-src 'self'",
+  "style-src 'self'",
+  "img-src 'self'",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'"
+].join('; ')
+
 app.use('*', async (c, next) => {
   await next()
   c.header('X-Content-Type-Options', 'nosniff')
@@ -32,7 +49,8 @@ app.use('*', async (c, next) => {
   c.header('X-Frame-Options', 'DENY')
   c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
   c.header('Cross-Origin-Resource-Policy', 'same-origin')
-  c.header('Content-Security-Policy', "frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+  c.header('Cross-Origin-Opener-Policy', 'same-origin')
+  c.header('Content-Security-Policy', CONTENT_SECURITY_POLICY)
 })
 
 /* ------------------------------------------------------------------ */

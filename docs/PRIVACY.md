@@ -23,6 +23,19 @@ or a Sapling address; transparent `t1`/`t3`/`tm` addresses are rejected in the c
 validator and the server's claim validator. The wallet adapter always passes
 `fundingSource: 'shielded'` and there is no UI switch to transparent funding.
 
+**Unified addresses are decoded, not pattern-matched.** A `u1…` address is a bundle of receivers
+and may include a transparent one. If it does, a payer's wallet could choose that receiver and
+send publicly. Zac decodes every unified address (Bech32m, F4Jumble, receiver list, per ZIP-316;
+`shared/zip316.ts`, tested against the official `zcash-test-vectors`) and:
+
+- rejects any address that bundles a transparent receiver in the directory, payment links and the
+  server's claim validator;
+- publishes the connected wallet's address with its transparent receiver stripped, so the same
+  wallet is reachable only through its Sapling/Orchard receivers;
+- pays a pasted address through its shielded receivers only.
+
+Checksums are verified too, so a mistyped address is refused instead of sent to.
+
 On the public chain, a shielded transaction reveals that *a* transaction happened, its fee and its
 timing, but not the sender, recipient or amount. This is Zcash's core guarantee, inherited from the
 shielded pool; Zac does not add a custom anonymity layer.
@@ -126,8 +139,14 @@ Other operational facts:
 - **No request logging.** The Node process prints one startup line; Hono has no logger installed.
 - **Rate limiting** is an in-memory map keyed by a salted hash of the connection IP. The salt is
   generated per process; raw IPs are never written to disk.
+- **A strict Content-Security-Policy** makes "no third-party requests" a rule the browser enforces,
+  not a promise: `default-src 'none'` with only `'self'` allowed for scripts, styles, images, fonts
+  and `connect-src`. Even injected or compromised code in the page cannot fetch, beacon or load
+  anything from another origin. The build emits every asset as a file (no inlined `data:` URIs) so
+  nothing needs an exception.
 - **Referrer-Policy: no-referrer**, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
-  `Cross-Origin-Resource-Policy: same-origin` and a minimal framing/base/form CSP are set by the server.
+  `Cross-Origin-Resource-Policy: same-origin` and `Cross-Origin-Opener-Policy: same-origin` are also
+  set by the server.
 - The app makes **no external network requests** at runtime (the wallet extension's own sync traffic is
   separate and outside the page).
 - The server is open source and self-hostable; the directory can be mirrored.

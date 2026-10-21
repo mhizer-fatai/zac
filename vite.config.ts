@@ -10,6 +10,9 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    // Emit every asset as a same-origin file. Inlined data: URIs would be
+    // blocked by the server's strict Content-Security-Policy.
+    assetsInlineLimit: 0
   }
 })
