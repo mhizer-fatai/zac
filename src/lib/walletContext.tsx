@@ -9,7 +9,6 @@ import {
 } from 'react'
 import {
   createWalletAdapter,
-  exitDemoMode,
   type WalletAdapter,
   type WalletConnection
 } from './wallet'
@@ -21,10 +20,8 @@ interface WalletContextValue {
   connection: WalletConnection | null
   status: WalletStatus
   error: string | null
-  demoMode: boolean
   connect: () => Promise<void>
   disconnect: () => Promise<void>
-  exitDemo: () => void
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null)
@@ -70,7 +67,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [adapter])
 
   useEffect(() => {
-    if (adapter.kind !== 'noir') return
     const onInitialized = () => {
       if (adapter.isAvailable()) {
         setStatus((current) => (current === 'unavailable' ? 'disconnected' : current))
@@ -104,23 +100,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [adapter])
 
-  const exitDemo = useCallback(() => {
-    exitDemoMode()
-    window.location.assign(window.location.pathname)
-  }, [])
-
   const value = useMemo<WalletContextValue>(
     () => ({
       adapter,
       connection,
       status,
       error,
-      demoMode: adapter.kind === 'demo',
       connect,
-      disconnect,
-      exitDemo
+      disconnect
     }),
-    [adapter, connection, status, error, connect, disconnect, exitDemo]
+    [adapter, connection, status, error, connect, disconnect]
   )
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>

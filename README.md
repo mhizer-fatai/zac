@@ -102,16 +102,14 @@ See [`docs/TESTNET.md`](docs/TESTNET.md). In short:
 1. Install the testnet build and create a wallet.
 2. Copy the shielded address and request TAZ from a faucet
    ([Valar](https://faucet.testnet.valargroup.dev/) or [Fauzec](https://fauzec.com/)).
-3. Open Zac, connect, claim a name, create a link and pay it.
-4. Use **Try the demo** to explore the whole interface without an extension or funds. Demo names are
-   local to your browser and never enter the public directory.
+3. Open Zac, connect, claim a name, create a link and pay it from a second wallet.
 
 ## Project layout
 
 ```
 src/                 React app
   components/        Layout, claim modal, QR, copy/share, tx rows
-  lib/               Wallet adapters (Noir + demo), directory, links, API
+  lib/               Noir Wallet adapter, directory, links, API
   pages/             Home, Send, Receive, Pay, Profile, Settings, Privacy
 shared/              Code used by both client and server
   address.ts         Shielded/transparent/network classification

@@ -28,7 +28,7 @@ import { useWalletData } from '../lib/useWalletData'
 
 export function PayPage() {
   const { payload: encoded } = useParams<{ payload: string }>()
-  const { status, connection, connect, adapter, demoMode } = useWallet()
+  const { status, connection, connect, adapter } = useWallet()
   const { resolve, findByAddress, loading: directoryLoading } = useDirectory()
   const { balance, refresh: refreshWallet } = useWalletData(status === 'connected')
   const toast = useToast()
@@ -160,9 +160,7 @@ export function PayPage() {
             <CopyButton value={txid} iconOnly />
           </div>
           <p className="muted small">
-            {demoMode
-              ? 'Demo payment — no real ZEC moved.'
-              : 'The recipient can decrypt the receipt memo. Nobody else can see the payment details on-chain.'}
+            The recipient can decrypt the receipt memo. Nobody else can see the payment details on-chain.
           </p>
           <div className="success-actions">
             <Link to="/" className="btn btn-primary">Done</Link>

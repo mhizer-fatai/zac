@@ -189,8 +189,7 @@ extension, its sync servers and its analytics settings. Zac does not control the
 - Open DevTools → Network, create a payment link and pay it. There is no request containing the
   payload, amount or recipient.
 - Search the directory response: it is one snapshot, not a request per name.
-- Inspect `localStorage`: it contains a demo wallet and a directory cache when in demo mode, never a
-  real seed or key.
+- Inspect `localStorage`: it contains only the directory cache, never a seed or key.
 - Read `shared/claim.ts`, `shared/paylink.ts` and `src/lib/directory.tsx`; the client verification is
   the same code the server runs.
 - Self-host the app and compare the only outbound requests: same-origin static assets and `/api`.

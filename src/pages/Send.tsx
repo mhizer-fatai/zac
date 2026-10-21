@@ -52,7 +52,7 @@ function resolveRecipient(
 }
 
 export function SendPage() {
-  const { status, connection, connect, demoMode, adapter } = useWallet()
+  const { status, connection, connect, adapter } = useWallet()
   const { resolve, findByAddress } = useDirectory()
   const { balance, refresh: refreshWallet } = useWalletData(status === 'connected')
   const toast = useToast()
@@ -211,9 +211,7 @@ export function SendPage() {
             <CopyButton value={txid} iconOnly />
           </div>
           <p className="muted small">
-            {demoMode
-              ? 'Demo payment — no real ZEC moved. The recipient received an encrypted demo receipt memo.'
-              : 'The recipient will see a private receipt memo in their wallet. Nobody else can read it.'}
+            The recipient will see a private receipt memo in their wallet. Nobody else can read it.
           </p>
           <div className="success-actions">
             <button type="button" className="btn btn-primary" onClick={reset}>

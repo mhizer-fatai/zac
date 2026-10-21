@@ -7,11 +7,10 @@ import {
   QrCode,
   ShieldCheck,
   Sparkles,
-  UserRound
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { buildPaymentMemo, newInvoiceId } from '../../shared/memo'
+import { newInvoiceId } from '../../shared/memo'
 import { buildZip321Uri, encodePaymentPayload } from '../../shared/paylink'
 import type { PaymentPayload } from '../../shared/types'
 import { isValidAmount } from '../../shared/amount'
@@ -19,7 +18,6 @@ import { bytesLength } from '../lib/format'
 import { payLink, profileLink } from '../lib/links'
 import { useDirectory } from '../lib/directory'
 import { useToast } from '../lib/toast'
-import { isDemoAdapter } from '../lib/wallet'
 import { useWallet } from '../lib/walletContext'
 import { useWalletData } from '../lib/useWalletData'
 import { Avatar } from '../components/Avatar'
@@ -28,11 +26,10 @@ import { CopyButton, ShareButton } from '../components/CopyButton'
 import { EmptyState } from '../components/EmptyState'
 import { NetworkBadge } from '../components/NetworkBadge'
 import { Qr } from '../components/Qr'
-import { Spinner } from '../components/Spinner'
 import { TxListEmpty, TxRow } from '../components/TxRow'
 
 export function ReceivePage() {
-  const { status, connection, connect, demoMode, adapter } = useWallet()
+  const { status, connection, connect } = useWallet()
   const { findByAddress } = useDirectory()
   const { history, refresh: refreshWallet } = useWalletData(status === 'connected')
   const toast = useToast()
@@ -41,7 +38,6 @@ export function ReceivePage() {
   const [note, setNote] = useState('')
   const [invoiceId, setInvoiceId] = useState(() => newInvoiceId())
   const [qrMode, setQrMode] = useState<'link' | 'zip321'>('link')
-  const [simulating, setSimulating] = useState(false)
 
   const ownClaim = connection ? findByAddress(connection.address) : undefined
   const amountValid = !amount || (isValidAmount(amount) && Number(amount) > 0)
@@ -93,21 +89,6 @@ export function ReceivePage() {
         </div>
       </div>
     )
-  }
-
-  async function simulateIncoming() {
-    if (!isDemoAdapter(adapter)) return
-    setSimulating(true)
-    try {
-      adapter.simulateIncoming(
-        '0.05',
-        buildPaymentMemo({ from: 'bob', note: 'Demo coffee', invoiceId: newInvoiceId() })
-      )
-      await refreshWallet()
-      toast.success('Simulated an incoming demo payment')
-    } finally {
-      setSimulating(false)
-    }
   }
 
   return (
@@ -261,11 +242,6 @@ export function ReceivePage() {
             <h2>Payments received</h2>
           </div>
           <div className="section-actions">
-            {demoMode ? (
-              <button type="button" className="btn btn-quiet btn-sm" onClick={() => void simulateIncoming()} disabled={simulating}>
-                {simulating ? <Spinner size={13} /> : <UserRound size={14} />} Simulate incoming
-              </button>
-            ) : null}
             <button type="button" className="btn btn-quiet btn-sm" onClick={() => void refreshWallet()}>
               Refresh
             </button>

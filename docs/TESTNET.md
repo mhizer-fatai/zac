@@ -82,18 +82,6 @@ Every request also renders a **ZIP-321** `zcash:` URI and QR code. In a wallet t
 ZIP-321 requests, scan it or paste the URI. Compare the address and amount before approving.
 Support varies by wallet; the QR/copy path is the most interoperable fallback.
 
-## 8. Demo mode
-
-Click **Try the demo** (or open `?demo=1`). This uses a simulated local wallet:
-
-- no extension or real funds required;
-- claims are stored only in your browser and never published;
-- sends and receipts are simulated;
-- the DEMO banner is always visible.
-
-Use **Exit demo** in the banner or Settings to return to the real wallet. Demo mode never touches the
-public directory.
-
 ## Troubleshooting
 
 | Symptom | Check |
@@ -103,7 +91,6 @@ public directory.
 | Faucet drip not visible | Wait for confirmation and wallet sync; faucets pay from shielded wallets and can be rate-limited |
 | Claim says "already claimed" | The name is already bound to another wallet's key. Pick another name. |
 | Signature fails | Unlock the wallet, retry; make sure the message shown by the wallet matches the name/address |
-| Demo claim fails | `crypto.subtle` requires `localhost` or HTTPS; open the app on localhost |
 
 ## Safety
 

@@ -58,7 +58,6 @@ shielded memo. No new token, no custody, no indexer of payments.
 - Noir Wallet adapter: connect, balance, history, max, shielded send with memo, derived-key signing.
 - Signed, nonce-protected claim directory with client verification and replay protection.
 - Fragment payment links, ZIP-321 fallback, QR codes, private notes, structured receipts.
-- Demo wallet for judges (local only, no real funds, no directory pollution).
 - Privacy model, architecture and testnet docs; unit tests; production build.
 
 ## Known limitations (be explicit)

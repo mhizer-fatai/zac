@@ -29,17 +29,12 @@ extension. There is no payment server, no indexer and no database of payments.
 
 - **React 19 + TypeScript + Vite.** No SSR. `HashRouter` is deliberate: every route and payment
   payload lives after `#`, so the server never receives names or payment details in a path or query.
-- **Wallet adapters** (`src/lib/wallet.ts`):
-  - `NoirAdapter` wraps `@noir-wallet/sdk` (`connect`, `getAccounts`, `getBalance`,
-    `getTransactionHistory`, `getMaxTransfer`, `sendTransaction`, `signMessage`,
-    `disconnect`). Sends always use `fundingSource: 'shielded'` and a derived signing mode for
-    claims.
-  - `DemoAdapter` uses a real secp256k1 key generated in the browser (for signature/claim testing)
-    and a simulated balance/history. Demo claims are stored only in `localStorage`, never sent to
-    the server. The UI labels demo mode persistently.
+- **Wallet adapter** (`src/lib/wallet.ts`): `NoirAdapter` wraps `@noir-wallet/sdk` (`connect`,
+  `getAccounts`, `getBalance`, `getTransactionHistory`, `getMaxTransfer`, `sendTransaction`,
+  `signMessage`, `disconnect`). Sends always use `fundingSource: 'shielded'` and a derived signing
+  mode for claims. There is no simulated wallet: every flow uses the real extension.
 - **Directory provider** (`src/lib/directory.tsx`): fetches the full `/api/directory` snapshot,
   verifies every claim locally, caches the last snapshot, and resolves names/addresses in memory.
-  Adds locally claimed demo names when demo mode is enabled.
 - **Payment link codec** (`shared/paylink.ts`): base64url JSON in the URL fragment. Also builds a
   ZIP-321 `zcash:` URI for non-Noir wallets.
 - **Memo codec** (`shared/memo.ts`): `zac1|invoice|@sender|note`, UTF-8 byte-safe, max 512 bytes.
@@ -175,4 +170,3 @@ The client has no build-time dependency on the API origin; it uses same-origin `
 - **A public directory** is required for names to be useful; the design makes the public data minimal
   and self-verifying.
 - **No frame/iframe embedding and no external assets** reduce the attack surface and metadata leaks.
-- **Demo mode** is client-local so judge/demo activity cannot squat real names.

@@ -14,7 +14,6 @@ import { classifyAddress } from '../../shared/address'
 import { buildClaimMessage } from '../../shared/claim'
 import { normalizeUsername, validateUsername } from '../../shared/username'
 import { loadDirectory } from './api'
-import { isDemoRequested } from './wallet'
 
 const CACHE_KEY = 'zac.directory.cache.v1'
 const CACHE_TTL_MS = 10 * 60 * 1000
@@ -27,11 +26,9 @@ interface DirectoryContextValue {
   refresh: (force?: boolean) => Promise<void>
   resolve: (username: string) => Claim | undefined
   findByAddress: (address: string) => Claim | undefined
-  addLocalClaim: (claim: Claim) => void
 }
 
 const DirectoryContext = createContext<DirectoryContextValue | null>(null)
-const LOCAL_CLAIMS_KEY = 'zac.localclaims.v1'
 
 function verifyClaim(claim: Claim): boolean {
   try {
@@ -78,41 +75,15 @@ function writeCache(snapshot: DirectorySnapshot, fetchedAt: number): void {
   }
 }
 
-function readLocalClaims(): Claim[] {
-  try {
-    const raw = localStorage.getItem(LOCAL_CLAIMS_KEY)
-    if (!raw) return []
-    const parsed: unknown = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((claim): claim is Claim => {
-      if (!claim || typeof claim !== 'object') return false
-      const value = claim as Claim
-      return typeof value.username === 'string' && verifyClaim(value)
-    })
-  } catch {
-    return []
-  }
-}
-
-function writeLocalClaims(claims: Claim[]): void {
-  try {
-    localStorage.setItem(LOCAL_CLAIMS_KEY, JSON.stringify(claims))
-  } catch {
-    /* storage may be unavailable */
-  }
-}
-
 export function DirectoryProvider({ children }: { children: ReactNode }) {
-  const [demoMode] = useState(() => isDemoRequested())
-  const [serverClaims, setServerClaims] = useState<Claim[]>([])
-  const [localClaims, setLocalClaims] = useState<Claim[]>(() => (demoMode ? readLocalClaims() : []))
+  const [claims, setClaims] = useState<Claim[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [fetchedAt, setFetchedAt] = useState(0)
   const inFlight = useRef(false)
 
   const applySnapshot = useCallback((snapshot: DirectorySnapshot, when: number) => {
-    setServerClaims(snapshot.claims.filter(verifyClaim))
+    setClaims(snapshot.claims.filter(verifyClaim).sort((a, b) => a.username.localeCompare(b.username)))
     setFetchedAt(when)
     writeCache(snapshot, when)
   }, [])
@@ -149,29 +120,6 @@ export function DirectoryProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const claims = useMemo(() => {
-    const merged = new Map<string, Claim>()
-    for (const claim of serverClaims) merged.set(claim.username, claim)
-    if (demoMode) {
-      for (const claim of localClaims) {
-        if (!merged.has(claim.username)) merged.set(claim.username, claim)
-      }
-    }
-    return Array.from(merged.values()).sort((a, b) => a.username.localeCompare(b.username))
-  }, [serverClaims, localClaims, demoMode])
-
-  const addLocalClaim = useCallback(
-    (claim: Claim) => {
-      if (!demoMode) return
-      setLocalClaims((current) => {
-        const next = [...current.filter((item) => item.username !== claim.username), claim]
-        writeLocalClaims(next)
-        return next
-      })
-    },
-    [demoMode]
-  )
-
   const resolve = useCallback(
     (username: string) => {
       const normalized = normalizeUsername(username)
@@ -186,8 +134,8 @@ export function DirectoryProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo<DirectoryContextValue>(
-    () => ({ claims, loading, error, fetchedAt, refresh, resolve, findByAddress, addLocalClaim }),
-    [claims, loading, error, fetchedAt, refresh, resolve, findByAddress, addLocalClaim]
+    () => ({ claims, loading, error, fetchedAt, refresh, resolve, findByAddress }),
+    [claims, loading, error, fetchedAt, refresh, resolve, findByAddress]
   )
 
   return <DirectoryContext.Provider value={value}>{children}</DirectoryContext.Provider>

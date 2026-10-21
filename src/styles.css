@@ -119,16 +119,6 @@ code { font-family: var(--mono); }
 .nav-link.is-active { color: var(--text); background: rgba(255, 255, 255, 0.065); }
 
 .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-.demo-chip {
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  color: var(--gold);
-  background: var(--gold-soft);
-  border: 1px solid var(--gold-line);
-  border-radius: 999px;
-  padding: 4px 8px;
-}
 .wallet-chip {
   display: inline-flex;
   align-items: center;
@@ -151,26 +141,6 @@ code { font-family: var(--mono); }
 .wallet-chip.is-loading { padding: 7px 14px 7px 8px; }
 .skeleton-dot { width: 26px; height: 26px; border-radius: 50%; background: rgba(255, 255, 255, 0.07); }
 .skeleton-line { width: 74px; height: 9px; border-radius: 4px; background: rgba(255, 255, 255, 0.07); }
-
-.demo-banner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 18px;
-  padding: 8px 18px;
-  background: rgba(246, 196, 83, 0.09);
-  border-bottom: 1px solid var(--gold-line);
-  color: #f7dfa2;
-  font-size: 12.5px;
-}
-.demo-banner button {
-  background: none;
-  border: 0;
-  color: var(--gold);
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
 
 .main { flex: 1; }
 
@@ -1054,9 +1024,6 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
 .faucet-note strong { font-size: 12.5px; }
 .faucet-note span { font-size: 11.5px; color: var(--muted); line-height: 1.55; }
 .faucet-note a { color: var(--gold); display: inline-flex; align-items: center; gap: 2px; text-decoration: underline; text-underline-offset: 2px; }
-.demo-note { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 13px 14px; margin-top: 14px; border: 1px dashed var(--line-strong); border-radius: 11px; font-size: 11.5px; color: var(--muted); }
-.demo-note strong { color: var(--text); }
-.demo-note .btn { margin-left: auto; }
 .check-list { list-style: none; margin: 0; padding: 0; }
 .check-list li { display: flex; gap: 9px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--muted); line-height: 1.5; }
 .check-list li:last-child { border-bottom: 0; }
@@ -1241,7 +1208,6 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
   .identity-wide-actions { margin-left: 0; width: 100%; }
   .identity-wide .identity-top { flex-wrap: wrap; }
   .toast-stack { bottom: 78px; }
-  .demo-banner { font-size: 11px; gap: 10px; padding: 7px 12px; }
 }
 
 @media (max-width: 520px) {

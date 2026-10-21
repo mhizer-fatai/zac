@@ -1,12 +1,10 @@
 import {
   ArrowLeft,
-  ArrowUpRight,
   Check,
   Download,
   ExternalLink,
   Globe,
   LogOut,
-  RotateCcw,
   ShieldCheck,
   Trash2,
   Wallet
@@ -26,7 +24,7 @@ const FAUCET_FAUZEC = 'https://fauzec.com/'
 const SOURCE_URL = (import.meta.env.VITE_SOURCE_URL as string | undefined) ?? ''
 
 export function SettingsPage() {
-  const { status, connection, demoMode, connect, disconnect, exitDemo, adapter } = useWallet()
+  const { status, connection, connect, disconnect, adapter } = useWallet()
   const { claims } = useDirectory()
   const toast = useToast()
 
@@ -68,7 +66,7 @@ export function SettingsPage() {
         <div className="section-head">
           <div>
             <p className="eyebrow">Wallet</p>
-            <h2>{connection ? (demoMode ? 'Demo wallet' : 'Noir Wallet') : 'Connect a wallet'}</h2>
+            <h2>{connection ? 'Noir Wallet' : 'Connect a wallet'}</h2>
           </div>
           {connection ? <NetworkBadge network={connection.network} /> : null}
         </div>
@@ -80,7 +78,7 @@ export function SettingsPage() {
                 <span className="settings-address" title={connection.address}>{shortAddress(connection.address, 18, 12)}</span>
                 <span className="muted small">
                   {connection.accounts.length} account{connection.accounts.length === 1 ? '' : 's'} authorized ·{' '}
-                  {demoMode ? 'simulated funds' : 'self-custodial'}
+                  self-custodial
                 </span>
               </div>
               <CopyButton value={connection.address} label="Copy" />
@@ -89,11 +87,6 @@ export function SettingsPage() {
               <button type="button" className="btn btn-secondary" onClick={() => void handleDisconnect()}>
                 <LogOut size={15} /> Disconnect
               </button>
-              {demoMode ? (
-                <button type="button" className="btn btn-quiet" onClick={exitDemo}>
-                  <RotateCcw size={15} /> Exit demo
-                </button>
-              ) : null}
             </div>
           </>
         ) : status === 'unavailable' ? (
@@ -153,26 +146,6 @@ export function SettingsPage() {
             </button>
           </div>
         )}
-        {!demoMode ? (
-          <div className="demo-note">
-            <strong>Just exploring?</strong>
-            <span>Try the full interface with a simulated wallet and no real funds.</span>
-            <button
-              type="button"
-              className="btn btn-quiet btn-sm"
-              onClick={() => {
-                try {
-                  localStorage.setItem('zac.demo.enabled', '1')
-                  window.location.assign(`${window.location.pathname}?demo=1`)
-                } catch {
-                  toast.error('Could not start demo mode.')
-                }
-              }}
-            >
-              <ArrowUpRight size={14} /> Start demo
-            </button>
-          </div>
-        ) : null}
       </section>
 
       <section className="card settings-card">

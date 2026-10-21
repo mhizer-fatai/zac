@@ -33,7 +33,7 @@ export function ClaimModal({
   initialName?: string
 }) {
   const { connection, adapter, connect, status } = useWallet()
-  const { resolve, refresh, addLocalClaim } = useDirectory()
+  const { resolve, refresh } = useDirectory()
   const toast = useToast()
   const [input, setInput] = useState('')
   const [phase, setPhase] = useState<Phase>('form')
@@ -99,24 +99,6 @@ export function ClaimModal({
       setPhase('signing')
       const signed = await adapter.signMessage(message)
       setPhase('saving')
-      if (adapter.kind === 'demo') {
-        const localClaim: Claim = {
-          username: check.username,
-          address: activeConnection.address,
-          network: activeConnection.network,
-          pubkey: signed.pubkey,
-          signature: signed.signature,
-          message,
-          createdAt: Date.now(),
-          updatedAt: Date.now()
-        }
-        addLocalClaim(localClaim)
-        setClaimed(localClaim)
-        setPhase('done')
-        onClaimed?.(localClaim)
-        toast.success(`@${localClaim.username} is yours (local demo)`)
-        return
-      }
       const result = await claimUsername({
         username: check.username,
         address: activeConnection.address,
@@ -146,9 +128,7 @@ export function ClaimModal({
           </div>
           <h3>You are @{claimed.username}</h3>
           <p>
-            {adapter.kind === 'demo'
-              ? 'This name is local to your demo browser. Real claims are published to the public directory; demo names never leave this browser.'
-              : 'Your name is now public in the Zac directory. Payments to it are still shielded and encrypted.'}
+            Your name is now public in the Zac directory. Payments to it are still shielded and encrypted.
           </p>
           <div className="claim-link-row">
             <code>{profileLink(claimed.username)}</code>

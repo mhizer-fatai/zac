@@ -30,21 +30,12 @@ import { Spinner } from '../components/Spinner'
 import { TxListEmpty, TxRow } from '../components/TxRow'
 
 export function Home() {
-  const { status, connection, connect, demoMode } = useWallet()
+  const { status, connection, connect } = useWallet()
   const { findByAddress, claims } = useDirectory()
   const toast = useToast()
   const [claimOpen, setClaimOpen] = useState(false)
   const { balance, history, loading, error, refresh } = useWalletData(status === 'connected')
   const ownClaim = connection ? findByAddress(connection.address) : undefined
-
-  function startDemo() {
-    try {
-      localStorage.setItem('zac.demo.enabled', '1')
-      window.location.assign(`${window.location.pathname}?demo=1`)
-    } catch {
-      toast.error('Could not start the demo in this browser.')
-    }
-  }
 
   async function handleConnect() {
     try {
@@ -233,21 +224,19 @@ export function Home() {
             No accounts. No analytics. Nobody sees who paid whom.
           </p>
           <div className="hero-actions">
-            {status === 'unavailable' && !demoMode ? (
+            {status === 'unavailable' ? (
               <Link to="/settings" className="btn btn-primary btn-lg">
                 <Download size={18} /> Set up Noir Wallet
               </Link>
             ) : (
               <button type="button" className="btn btn-primary btn-lg" onClick={handleConnect}>
                 <Wallet size={18} />
-                {demoMode ? 'Connect demo wallet' : 'Connect Noir Wallet'}
+                Connect Noir Wallet
               </button>
             )}
-            {!demoMode ? (
-              <button type="button" className="btn btn-secondary btn-lg" onClick={startDemo}>
-                Try the demo
-              </button>
-            ) : null}
+            <Link to="/privacy" className="btn btn-secondary btn-lg">
+              How privacy works
+            </Link>
           </div>
           <div className="hero-trust">
             <span><Check size={14} /> Non-custodial</span>
@@ -360,13 +349,11 @@ export function Home() {
         </div>
         <div className="cta-actions">
           <button type="button" className="btn btn-primary btn-lg" onClick={handleConnect}>
-            <Wallet size={18} /> {demoMode ? 'Connect demo' : 'Connect Noir'}
+            <Wallet size={18} /> Connect Noir
           </button>
-          {!demoMode ? (
-            <button type="button" className="btn btn-secondary btn-lg" onClick={startDemo}>
-              <ArrowUpRight size={18} /> Explore demo
-            </button>
-          ) : null}
+          <Link to="/privacy" className="btn btn-secondary btn-lg">
+            <ArrowUpRight size={18} /> Read the privacy model
+          </Link>
         </div>
       </section>
 

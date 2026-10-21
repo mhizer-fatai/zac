@@ -63,7 +63,7 @@ export async function upsertClaim(claim: Claim, nonce: string): Promise<'created
     : { ...claim, createdAt: now, updatedAt: now }
   claims.set(next.username, next)
   usedNonces.add(nonce)
-  // Bound memory on a long-running demo instance.
+  // Bound memory on a long-running instance.
   if (usedNonces.size > 20_000) {
     const drop = usedNonces.size - 15_000
     let i = 0

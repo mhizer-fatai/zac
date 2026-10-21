@@ -18,7 +18,7 @@ const navItems = [
 
 export function Layout() {
   const location = useLocation()
-  const { demoMode, exitDemo, connection, status, connect } = useWallet()
+  const { connection, status, connect } = useWallet()
   const { findByAddress } = useDirectory()
   const handle = connection ? findByAddress(connection.address)?.username : undefined
 
@@ -52,7 +52,6 @@ export function Layout() {
             ))}
           </nav>
           <div className="topbar-actions">
-            {demoMode ? <span className="demo-chip">DEMO</span> : null}
             {status === 'connected' && connection ? (
               <NavLink to="/settings" className="wallet-chip" title="Wallet settings">
                 <Avatar seed={connection.address} label={handle ? `@${handle}` : connection.address} size={28} />
@@ -76,17 +75,6 @@ export function Layout() {
           </div>
         </div>
       </header>
-
-      {demoMode ? (
-        <div className="demo-banner">
-          <span>
-            <strong>Demo wallet</strong> · simulated funds, no real ZEC
-          </span>
-          <button type="button" onClick={exitDemo}>
-            Exit demo
-          </button>
-        </div>
-      ) : null}
 
       <main className="main">
         <Outlet />
