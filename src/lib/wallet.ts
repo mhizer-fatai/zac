@@ -51,25 +51,39 @@ export interface WalletAdapter {
   disconnect(): Promise<void>
 }
 
+/**
+ * The address Zac publishes and shares for this wallet. If the wallet's
+ * unified address bundles a transparent receiver, Zac strips it so nobody
+ * can pay the wallet publicly through Zac. Funds still arrive in the same
+ * wallet: the shielded receivers are unchanged.
+ */
+function shieldedReceiveAddress(address: string): string | null {
+  const info = classifyAddress(address)
+  if (info.kind === 'shielded') return info.address
+  if (info.kind === 'mixed' && info.shieldedOnly) return info.shieldedOnly
+  return null
+}
+
 export function connectionFromResult(result: {
   shielded: string
   transparent: string
   accounts?: Array<{ id: string; label: string; addresses: { shielded: string } }>
 }): WalletConnection {
   const info = classifyAddress(result.shielded)
-  if (info.kind !== 'shielded' || info.network === 'unknown') {
+  const address = shieldedReceiveAddress(result.shielded)
+  if (!address || info.network === 'unknown') {
     throw new Error('The wallet returned an address that Zac cannot verify.')
   }
   const accounts: WalletAccount[] = (result.accounts ?? []).map((account) => ({
     id: account.id,
     label: account.label,
-    address: account.addresses.shielded
+    address: shieldedReceiveAddress(account.addresses.shielded) ?? account.addresses.shielded
   }))
   if (accounts.length === 0) {
-    accounts.push({ id: 'primary', label: 'Primary', address: result.shielded })
+    accounts.push({ id: 'primary', label: 'Primary', address })
   }
   return {
-    address: result.shielded,
+    address,
     transparent: result.transparent,
     network: info.network,
     accounts

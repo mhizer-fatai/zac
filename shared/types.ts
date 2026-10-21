@@ -1,11 +1,14 @@
 export type ZcashNetwork = 'mainnet' | 'testnet'
 
-export type AddressKind = 'shielded' | 'transparent' | 'unknown'
+/** `mixed` is a unified address that bundles a transparent receiver. */
+export type AddressKind = 'shielded' | 'mixed' | 'transparent' | 'unknown'
 
 export interface AddressInfo {
   address: string
   network: ZcashNetwork | 'unknown'
   kind: AddressKind
+  /** For `mixed`: the same unified address with transparent receivers removed. */
+  shieldedOnly?: string
   reason?: string
 }
 

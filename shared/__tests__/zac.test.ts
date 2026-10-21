@@ -4,6 +4,7 @@ import { secp256k1 } from '@noble/curves/secp256k1.js'
 import { verifyMessageSignature } from '@noir-wallet/sdk'
 
 import { classifyAddress } from '../address'
+import { bech32Encode, decodeUnifiedAddress, encodeUnifiedAddress, f4jumble, f4jumbleInv } from '../zip316'
 import {
   addAmounts,
   formatAmount,
@@ -52,12 +53,54 @@ describe('amounts', () => {
   })
 })
 
+// From zcash-test-vectors unified_address.json (ZIP-316).
+const UA_SAPLING_ORCHARD =
+  'u1ay3aawlldjrmxqnjf5medr5ma6p3acnet464ht8lmwplq5cd3ugytcmlf96rrmtgwldc75x94qn4n8pgen36y8tywlq6yjk7lkf3fa8wzjrav8z2xpxqnrnmjxh8tmz6jhfh425t7f3vy6p4pd3zmqayq49efl2c4xydc0gszg660q9p'
+const UA_ORCHARD_ONLY =
+  'u1ddnjsdcpm36r6aq79n3s68shjweksnmwtdltrh046s8m6xcws9ygyawalxx8n6hg6vegk0wh8zjnafxgh6msppjsljvyt0ynece3lvm0'
+const UA_P2PKH_ORCHARD =
+  'u1snf9yr883aj2hm8pksp9aymnqdwzy42rpzuffevj35hhxeckays5pcpeq7vy2mtgzlcuc4mnh9443qnuyje0yx6h59angywka4v2ap6kchh2j96ezf9w0c0auyz3wwts2lx5gmk2sk9'
+const SAPLING_RAW = '88533c398a49c2513dc85162bf220abaf47dc983f14e908ddaaa7322dba16531bc62efe750fe575c8d149b'
+const ORCHARD_RAW = '31844683a07bf8e30057902b0d23e2b2ce9cad0b22190238ca4f329da92c7979052b00f735cb210671bdb0'
+const fromHex = (hex: string) => Uint8Array.from(hex.match(/.{2}/g)!, (byte) => parseInt(byte, 16))
+const toHex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+const TESTNET_UA = encodeUnifiedAddress('utest', [{ typecode: 3, data: fromHex(ORCHARD_RAW) }])
+
 describe('addresses', () => {
   it('recognises shielded networks', () => {
-    expect(classifyAddress('u1' + 'q'.repeat(70))).toMatchObject({ network: 'mainnet', kind: 'shielded' })
-    expect(classifyAddress('utest1' + 'q'.repeat(70))).toMatchObject({ network: 'testnet', kind: 'shielded' })
-    expect(classifyAddress('zs1' + 'q'.repeat(70))).toMatchObject({ network: 'mainnet', kind: 'shielded' })
-    expect(classifyAddress('ztestsapling1' + 'q'.repeat(60))).toMatchObject({ network: 'testnet', kind: 'shielded' })
+    expect(classifyAddress(UA_SAPLING_ORCHARD)).toMatchObject({ network: 'mainnet', kind: 'shielded' })
+    expect(classifyAddress(UA_ORCHARD_ONLY)).toMatchObject({ network: 'mainnet', kind: 'shielded' })
+    expect(classifyAddress(TESTNET_UA)).toMatchObject({ network: 'testnet', kind: 'shielded' })
+    expect(classifyAddress(bech32Encode('zs', fromHex(SAPLING_RAW), 'bech32'))).toMatchObject({
+      network: 'mainnet',
+      kind: 'shielded'
+    })
+    expect(classifyAddress(bech32Encode('ztestsapling', fromHex(SAPLING_RAW), 'bech32'))).toMatchObject({
+      network: 'testnet',
+      kind: 'shielded'
+    })
+  })
+
+  it('rejects addresses with a bad checksum', () => {
+    const typo = UA_ORCHARD_ONLY.slice(0, -1) + (UA_ORCHARD_ONLY.endsWith('q') ? 'p' : 'q')
+    expect(classifyAddress(typo).kind).toBe('unknown')
+    expect(classifyAddress('u1' + 'q'.repeat(70)).kind).toBe('unknown')
+    expect(classifyAddress('zs1' + 'q'.repeat(70)).kind).toBe('unknown')
+  })
+
+  it('flags unified addresses that hide a transparent receiver', () => {
+    const info = classifyAddress(UA_P2PKH_ORCHARD)
+    expect(info).toMatchObject({ network: 'mainnet', kind: 'mixed' })
+    const stripped = decodeUnifiedAddress(info.shieldedOnly!)
+    expect(stripped.ok && stripped.value.receivers.map((r) => [r.typecode, toHex(r.data)])).toEqual([[3, ORCHARD_RAW]])
+    expect(classifyAddress(info.shieldedOnly!)).toMatchObject({ kind: 'shielded' })
+  })
+
+  it('round-trips F4Jumble', () => {
+    const message = fromHex('5d7a8f739a2d9e945b0ce152a8049e294c4d6e66b164939daffa2ef6ee6921481cdd86b3cc4318d9614fc820905d042b')
+    const jumbled = '0304d029141b995da5387c125970673504d6c764d91ea6c082123770c7139ccd88ee27368cd0c0921a0444c8e5858d22'
+    expect(toHex(f4jumble(message))).toBe(jumbled)
+    expect(toHex(f4jumbleInv(fromHex(jumbled)))).toBe(toHex(message))
   })
 
   it('refuses transparent addresses', () => {
@@ -113,7 +156,7 @@ describe('payment links', () => {
   const payload = {
     v: 1 as const,
     net: 'testnet' as const,
-    to: 'utest1' + 'q'.repeat(90),
+    to: TESTNET_UA,
     h: 'alice',
     a: '0.25',
     m: 'Lunch',
@@ -134,6 +177,8 @@ describe('payment links', () => {
     expect(decodePaymentPayload(wrongNetwork).ok).toBe(false)
     const badAmount = encodePaymentPayload({ ...payload, a: '1.123456789' })
     expect(decodePaymentPayload(badAmount).ok).toBe(false)
+    const mixed = encodePaymentPayload({ ...payload, net: 'mainnet', to: UA_P2PKH_ORCHARD })
+    expect(decodePaymentPayload(mixed).ok).toBe(false)
   })
 
   it('builds ZIP-321 URIs', () => {

@@ -44,11 +44,14 @@ function resolveRecipient(
     return { recipient: { address: claim.address, network: claim.network, claim } }
   }
   const info = classifyAddress(trimmed)
-  if (info.kind !== 'shielded' || info.network === 'unknown') {
+  // A unified address with a transparent receiver is paid through its
+  // shielded receivers only, so the wallet cannot fall back to a public send.
+  const address = info.kind === 'mixed' ? info.shieldedOnly : info.kind === 'shielded' ? info.address : undefined
+  if (!address || info.network === 'unknown') {
     return { error: info.reason ?? 'Enter a shielded Zcash address.' }
   }
-  const claim = findByAddress(info.address)
-  return { recipient: { address: info.address, network: info.network, claim } }
+  const claim = findByAddress(address)
+  return { recipient: { address, network: info.network, claim } }
 }
 
 export function SendPage() {
