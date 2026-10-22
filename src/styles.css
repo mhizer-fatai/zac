@@ -1433,16 +1433,16 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
 .receive-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .receive-head .page-head { margin-bottom: 28px; }
 .receive-card {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 48px;
   align-items: center;
-  width: min(460px, 100%);
-  margin: 0 auto;
-  padding: 24px 28px 28px;
+  padding: 36px 40px;
 }
-.receive-card-top { display: flex; align-items: center; justify-content: space-between; align-self: stretch; gap: 12px; }
-.receive-name { font-size: 18px; font-weight: 600; color: var(--gold); }
-.receive-qr { padding: 26px 0 22px; }
+.receive-qr { display: grid; place-items: center; }
+.receive-info { display: flex; flex-direction: column; min-width: 0; }
+.receive-card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
+.receive-name { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; color: var(--gold); }
 .receive-label {
   display: inline-flex;
   align-items: center;
@@ -1455,20 +1455,32 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
   color: var(--green);
 }
 .receive-address {
-  align-self: stretch;
   margin: 10px 0 16px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--bg);
   font-family: var(--mono);
-  font-size: 11.5px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.65;
   color: var(--text);
-  text-align: center;
   word-break: break-all;
 }
-.receive-copy { align-self: stretch; height: 42px; }
+.receive-copy { align-self: flex-start; height: 42px; padding: 0 18px; }
+.receive-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 26px 0 0;
+  padding: 20px 0 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.receive-facts li { position: relative; padding-left: 16px; }
+.receive-facts li::before { content: ''; position: absolute; left: 0; top: 0.6em; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
+.receive-facts strong { color: var(--text); font-weight: 600; }
 
 .menu { position: relative; flex: none; }
 .menu-list {
@@ -1507,6 +1519,8 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
 
 @media (max-width: 640px) {
   .receive-head { flex-direction: column; gap: 0; }
+  .receive-card { grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 24px 20px; }
+  .receive-copy { align-self: stretch; }
   .receive-head .menu { align-self: stretch; margin-bottom: 20px; }
   .receive-head .menu > .btn { width: 100%; }
   .menu-list { left: 0; right: 0; width: auto; }

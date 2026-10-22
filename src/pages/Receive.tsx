@@ -79,22 +79,29 @@ export function ReceivePage() {
       </div>
 
       <section className="card receive-card">
-        <div className="receive-card-top">
-          {ownClaim ? (
-            <span className="receive-name">@{ownClaim.username}</span>
-          ) : (
-            <button type="button" className="btn btn-quiet btn-sm" onClick={() => setClaimOpen(true)}>
-              <Sparkles size={14} /> Claim a name
-            </button>
-          )}
-          <NetworkBadge network={connection.network} />
-        </div>
         <div className="receive-qr">
-          <Qr value={zcashUri} size={232} />
+          <Qr value={zcashUri} size={260} />
         </div>
-        <span className="receive-label"><ShieldCheck size={13} /> Shielded address</span>
-        <div className="receive-address" title={address}>{address}</div>
-        <CopyButton value={address} label="Copy address" className="btn-secondary receive-copy" />
+        <div className="receive-info">
+          <div className="receive-card-top">
+            {ownClaim ? (
+              <span className="receive-name">@{ownClaim.username}</span>
+            ) : (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setClaimOpen(true)}>
+                <Sparkles size={14} /> Claim a name
+              </button>
+            )}
+            <NetworkBadge network={connection.network} />
+          </div>
+          <span className="receive-label"><ShieldCheck size={13} /> Shielded address</span>
+          <div className="receive-address" title={address}>{address}</div>
+          <CopyButton value={address} label="Copy address" className="btn-secondary receive-copy" />
+          <ul className="receive-facts">
+            <li>{ownClaim ? `Payments to @${ownClaim.username} arrive at this address.` : 'Claim a name so people can pay you without this address.'}</li>
+            <li>Accepts shielded (Sapling and Orchard) payments only.</li>
+            <li>Use <strong>Request payment</strong> to ask for a specific amount.</li>
+          </ul>
+        </div>
       </section>
 
       <RequestModal
