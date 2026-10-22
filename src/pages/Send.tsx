@@ -24,6 +24,7 @@ import { buildReceiptMemo } from '../lib/receipt'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
 import { useWalletData } from '../lib/useWalletData'
+import { describeWalletError } from '../lib/walletErrors'
 
 interface ResolvedRecipient {
   address: string
@@ -120,7 +121,7 @@ export function SendPage() {
         toast.info(`Max after the ${formatAmount(max.fee)} ZEC network fee`)
       }
     } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : 'Could not estimate the maximum.')
+      toast.error(describeWalletError(cause, 'Could not estimate the maximum.'))
     } finally {
       setMaxLoading(false)
     }
@@ -152,7 +153,7 @@ export function SendPage() {
       setLastRecipient(recipient)
       await refreshWallet()
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'The payment did not go through.'
+      const message = describeWalletError(cause, 'The payment did not go through.')
       setError(message)
       toast.error(message)
     } finally {
@@ -188,7 +189,7 @@ export function SendPage() {
           {status === 'unavailable' ? (
             <Link className="btn btn-primary" to="/settings">Set up Noir Wallet</Link>
           ) : (
-            <button type="button" className="btn btn-primary" onClick={() => void connect().catch((cause) => toast.error(cause instanceof Error ? cause.message : 'Could not connect.'))}>
+            <button type="button" className="btn btn-primary" onClick={() => void connect().catch((cause) => toast.error(describeWalletError(cause, 'Could not connect.')))}>
               <Wallet size={16} /> Connect Noir Wallet
             </button>
           )}

@@ -33,6 +33,7 @@ import { CopyButton } from '../components/CopyButton'
 import { NetworkBadge } from '../components/NetworkBadge'
 import { Spinner } from '../components/Spinner'
 import { TxListEmpty, TxRow } from '../components/TxRow'
+import { describeWalletError } from '../lib/walletErrors'
 
 export function Home() {
   const { status, connection, connect } = useWallet()
@@ -46,7 +47,7 @@ export function Home() {
     try {
       await connect()
     } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : 'Could not connect the wallet.')
+      toast.error(describeWalletError(cause, 'Could not connect the wallet.'))
     }
   }
 

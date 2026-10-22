@@ -11,6 +11,7 @@ import { payLink, profileLink } from '../lib/links'
 import { useOwnClaim } from '../lib/directory'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
+import { describeWalletError } from '../lib/walletErrors'
 import { ClaimModal } from '../components/ClaimModal'
 import { CopyButton, ShareButton } from '../components/CopyButton'
 import { Modal } from '../components/Modal'
@@ -42,7 +43,7 @@ export function ReceivePage() {
             <button
               type="button"
               className="btn btn-primary"
-              onClick={() => void connect().catch((cause) => toast.error(cause instanceof Error ? cause.message : 'Could not connect.'))}
+              onClick={() => void connect().catch((cause) => toast.error(describeWalletError(cause, 'Could not connect.')))}
             >
               Connect Noir Wallet
             </button>

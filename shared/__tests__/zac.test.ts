@@ -19,6 +19,7 @@ import {
 } from '../amount'
 import { buildClaimMessage, normalizePubkey, verifyClaim } from '../claim'
 import { findOwnClaim } from '../../src/lib/directory'
+import { describeWalletError } from '../../src/lib/walletErrors'
 import {
   buildPaymentMemo,
   cleanMemo,
@@ -361,5 +362,26 @@ describe('own name lookup', () => {
     expect(findOwnClaim([claim], connection(rotated, other))).toBeUndefined()
     expect(findOwnClaim([claim], connection(rotated, compressed, 'mainnet'))).toBeUndefined()
     expect(normalizePubkey('not-a-key')).toBeNull()
+  })
+})
+
+describe('wallet error messages', () => {
+  it('explains the outdated consensus branch id rejection', () => {
+    const noir = new Error(
+      'failed to validate tx: WtxId("private"), error: transaction did not pass consensus validation: transaction uses an incorrect consensus branch id'
+    )
+    expect(describeWalletError(noir)).toMatch(/outdated Zcash network version.*No funds were spent.*Update Noir Wallet/)
+  })
+
+  it('recognises a cancelled request as an Error or a provider object', () => {
+    expect(describeWalletError(new Error('[Noir Wallet Provider - zcash] request error: User rejected the request'))).toBe(
+      'Request cancelled in your wallet.'
+    )
+    expect(describeWalletError({ code: 4001, message: 'whatever' })).toBe('Request cancelled in your wallet.')
+  })
+
+  it('passes unknown errors through and falls back when empty', () => {
+    expect(describeWalletError(new Error('Something specific broke'))).toBe('Something specific broke')
+    expect(describeWalletError(undefined, 'The payment did not go through.')).toBe('The payment did not go through.')
   })
 })

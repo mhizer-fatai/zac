@@ -90,6 +90,7 @@ Support varies by wallet; the QR/copy path is the most interoperable fallback.
 | Wrong network warning | You are mixing a mainnet link with the testnet extension (or vice versa). Install the matching build. |
 | Faucet drip not visible | Wait for confirmation and wallet sync; faucets pay from shielded wallets and can be rate-limited |
 | Claim says "already claimed" | The name is already bound to another wallet's key. Pick another name. |
+| Send fails with "incorrect consensus branch id" | The wallet built the transaction for an older network upgrade. NU6.3 (ZIP-258, branch ID `0x37A5165B`) is active on Testnet from height 4134000; a wallet build without it is rejected by nodes after proving. Nothing is spent. Update the wallet; Zac shows this as a plain-language error |
 | Signature fails | Unlock the wallet, retry; make sure the message shown by the wallet matches the name/address |
 
 ## Safety

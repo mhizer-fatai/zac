@@ -16,6 +16,7 @@ import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
 import { NetworkBadge } from '../components/NetworkBadge'
 import { CopyButton } from '../components/CopyButton'
+import { describeWalletError } from '../lib/walletErrors'
 
 const CHROME_STORE = 'https://chromewebstore.google.com/detail/noir-wallet/mfoghjbpfanobmnoemoepenjjcmfpmdn'
 const TESTNET_RELEASES = 'https://github.com/NoirWallet/noir-wallet-sdk/releases'
@@ -32,7 +33,7 @@ export function SettingsPage() {
     try {
       await connect()
     } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : 'Could not connect the wallet.')
+      toast.error(describeWalletError(cause, 'Could not connect the wallet.'))
     }
   }
 

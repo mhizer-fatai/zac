@@ -12,6 +12,7 @@ import {
   type WalletAdapter,
   type WalletConnection
 } from './wallet'
+import { describeWalletError } from './walletErrors'
 
 type WalletStatus = 'checking' | 'disconnected' | 'connected' | 'unavailable'
 
@@ -25,15 +26,6 @@ interface WalletContextValue {
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null)
-
-function describeError(cause: unknown): string {
-  if (cause instanceof Error && cause.message) return cause.message
-  if (typeof cause === 'object' && cause && 'message' in cause) {
-    const message = (cause as { message?: unknown }).message
-    if (typeof message === 'string') return message
-  }
-  return 'The wallet request did not complete.'
-}
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [adapter] = useState<WalletAdapter>(() => createWalletAdapter())
@@ -84,7 +76,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setConnection(next)
       setStatus('connected')
     } catch (cause) {
-      setError(describeError(cause))
+      setError(describeWalletError(cause))
       setStatus(adapter.isAvailable() ? 'disconnected' : 'unavailable')
       throw cause
     }

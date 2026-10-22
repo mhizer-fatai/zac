@@ -13,13 +13,9 @@ import { useWallet } from '../lib/walletContext'
 import { CopyButton } from './CopyButton'
 import { Modal } from './Modal'
 import { Spinner } from './Spinner'
+import { describeWalletError } from '../lib/walletErrors'
 
 type Phase = 'form' | 'signing' | 'saving' | 'done'
-
-function describeError(cause: unknown): string {
-  if (cause instanceof Error && cause.message) return cause.message
-  return 'The claim did not complete.'
-}
 
 export function ClaimModal({
   open,
@@ -124,7 +120,7 @@ export function ClaimModal({
       toast.success(`@${result.claim.username} is yours`)
     } catch (cause) {
       setPhase('form')
-      const message = describeError(cause)
+      const message = describeWalletError(cause, 'The claim did not complete.')
       setError(message)
       toast.error(message)
     }
@@ -169,7 +165,7 @@ export function ClaimModal({
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
-                  onClick={() => void connect().catch((cause) => toast.error(describeError(cause)))}
+                  onClick={() => void connect().catch((cause) => toast.error(describeWalletError(cause, 'The claim did not complete.')))}
                 >
                   <Wallet size={15} />
                   Connect

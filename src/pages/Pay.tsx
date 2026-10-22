@@ -26,6 +26,7 @@ import { buildReceiptMemo } from '../lib/receipt'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
 import { useWalletData } from '../lib/useWalletData'
+import { describeWalletError } from '../lib/walletErrors'
 
 export function PayPage() {
   const { payload: encoded } = useParams<{ payload: string }>()
@@ -116,7 +117,7 @@ export function PayPage() {
       setTxid(hash)
       await refreshWallet()
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'The payment did not go through.'
+      const message = describeWalletError(cause, 'The payment did not go through.')
       setError(message)
       toast.error(message)
     } finally {
@@ -128,7 +129,7 @@ export function PayPage() {
     try {
       await connect()
     } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : 'Could not connect the wallet.')
+      toast.error(describeWalletError(cause, 'Could not connect the wallet.'))
     }
   }
 
