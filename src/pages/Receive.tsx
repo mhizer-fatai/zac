@@ -1,89 +1,49 @@
-import {
-  ArrowDownToLine,
-  ArrowLeft,
-  Fingerprint,
-  Link2,
-  Lock,
-  QrCode,
-  ShieldCheck,
-  Sparkles,
-} from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { ArrowDownToLine, ArrowLeft, ChevronDown, Copy, Link2, QrCode, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { newInvoiceId } from '../../shared/memo'
 import { buildZip321Uri, encodePaymentPayload } from '../../shared/paylink'
 import type { PaymentPayload } from '../../shared/types'
 import { isValidAmount } from '../../shared/amount'
+import { copyText } from '../lib/clipboard'
 import { bytesLength } from '../lib/format'
 import { payLink, profileLink } from '../lib/links'
 import { useOwnClaim } from '../lib/directory'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
-import { useWalletData } from '../lib/useWalletData'
-import { Avatar } from '../components/Avatar'
 import { ClaimModal } from '../components/ClaimModal'
 import { CopyButton, ShareButton } from '../components/CopyButton'
-import { EmptyState } from '../components/EmptyState'
+import { Modal } from '../components/Modal'
 import { NetworkBadge } from '../components/NetworkBadge'
 import { Qr } from '../components/Qr'
-import { TxListEmpty, TxRow } from '../components/TxRow'
 
 export function ReceivePage() {
   const { status, connection, connect } = useWallet()
-  const { history, refresh: refreshWallet } = useWalletData(status === 'connected')
   const toast = useToast()
-  const [claimOpen, setClaimOpen] = useState(false)
-  const [amount, setAmount] = useState('')
-  const [note, setNote] = useState('')
-  const [invoiceId, setInvoiceId] = useState(() => newInvoiceId())
-  const [qrMode, setQrMode] = useState<'link' | 'zip321'>('link')
-
   const ownClaim = useOwnClaim()
-  const amountValid = !amount || (isValidAmount(amount) && Number(amount) > 0)
-  const noteBytes = bytesLength(note)
-  const noteValid = noteBytes <= 300
-
-  const payload: PaymentPayload | null = useMemo(() => {
-    if (!connection) return null
-    return {
-      v: 1,
-      net: connection.network,
-      // With a name, request payment to the name's registered address so the
-      // payer's name check passes even if the wallet now reports a different
-      // (rotated) address for the same account.
-      to: ownClaim?.address ?? connection.address,
-      h: ownClaim?.username,
-      a: amount && amountValid ? amount : undefined,
-      m: note && noteValid ? note : undefined,
-      i: invoiceId,
-      t: Date.now()
-    }
-  }, [connection, ownClaim?.username, ownClaim?.address, amount, amountValid, note, noteValid, invoiceId])
-
-  const encoded = payload ? encodePaymentPayload(payload) : ''
-  const link = encoded ? payLink(encoded) : ''
-  const zipUri = payload ? buildZip321Uri(payload) : ''
-
-  const incoming = (history ?? []).filter((tx) => tx.type === 'receive')
+  const [claimOpen, setClaimOpen] = useState(false)
+  const [requestOpen, setRequestOpen] = useState(false)
 
   if (status !== 'connected' || !connection) {
     return (
       <div className="page narrow-page">
         <div className="page-head">
           <p className="eyebrow">Receive</p>
-          <h1>Get paid privately</h1>
-          <p className="muted">Connect a wallet to see your shielded address, name and payment links.</p>
+          <h1>Receive</h1>
+          <p className="muted">Connect a wallet to see your shielded address and create payment links.</p>
         </div>
         <div className="card connect-card">
           <span className="icon-orb"><ArrowDownToLine size={24} /></span>
           <h2>{status === 'unavailable' ? 'Install Noir Wallet' : 'Connect your wallet'}</h2>
-          <p className="muted">
-            Your address and name stay in your wallet. Zac only publishes what you choose to share.
-          </p>
+          <p className="muted">Your keys stay in your wallet. Zac only shows what you choose to share.</p>
           {status === 'unavailable' ? (
             <Link className="btn btn-primary" to="/settings">Set up Noir Wallet</Link>
           ) : (
-            <button type="button" className="btn btn-primary" onClick={() => void connect().catch((cause) => toast.error(cause instanceof Error ? cause.message : 'Could not connect.'))}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void connect().catch((cause) => toast.error(cause instanceof Error ? cause.message : 'Could not connect.'))}
+            >
               Connect Noir Wallet
             </button>
           )}
@@ -93,189 +53,248 @@ export function ReceivePage() {
     )
   }
 
+  // The name's registered address when there is one, so the address shown
+  // here, the QR and every link agree with what payers resolve for @name.
+  const address = ownClaim?.address ?? connection.address
+  const zcashUri = `zcash:${address}`
+
+  async function copy(value: string, label: string) {
+    if (await copyText(value)) toast.success(`${label} copied`)
+    else toast.error('Could not copy to the clipboard.')
+  }
+
   return (
     <div className="page receive-page">
-      <div className="page-head">
-        <p className="eyebrow">Receive</p>
-        <h1>Get paid privately</h1>
-        <p className="muted">
-          Share your name or a request link. Both point to your shielded address; neither reveals a payment.
-        </p>
+      <div className="receive-head">
+        <div className="page-head">
+          <p className="eyebrow">Receive</p>
+          <h1>Receive</h1>
+          <p className="muted">Scan or copy your shielded address. Only shielded funds can be sent to it.</p>
+        </div>
+        <RequestMenu
+          onCreateLink={() => setRequestOpen(true)}
+          onCopyProfile={ownClaim ? () => void copy(profileLink(ownClaim.username), 'Profile link') : undefined}
+          onCopyUri={() => void copy(zcashUri, 'zcash: URI')}
+        />
       </div>
 
-      <div className="receive-grid">
-        <section className="card address-card">
-          <div className="card-topline">
-            <span className="chip chip-gold"><ShieldCheck size={14} /> Your shielded address</span>
-            <NetworkBadge network={connection.network} />
+      <section className="card receive-card">
+        <div className="receive-card-top">
+          {ownClaim ? (
+            <span className="receive-name">@{ownClaim.username}</span>
+          ) : (
+            <button type="button" className="btn btn-quiet btn-sm" onClick={() => setClaimOpen(true)}>
+              <Sparkles size={14} /> Claim a name
+            </button>
+          )}
+          <NetworkBadge network={connection.network} />
+        </div>
+        <div className="receive-qr">
+          <Qr value={zcashUri} size={232} />
+        </div>
+        <span className="receive-label"><ShieldCheck size={13} /> Shielded address</span>
+        <div className="receive-address" title={address}>{address}</div>
+        <CopyButton value={address} label="Copy address" className="btn-secondary receive-copy" />
+      </section>
+
+      <RequestModal
+        open={requestOpen}
+        onClose={() => setRequestOpen(false)}
+        address={address}
+        network={connection.network}
+        username={ownClaim?.username}
+      />
+      <ClaimModal open={claimOpen} onClose={() => setClaimOpen(false)} />
+    </div>
+  )
+}
+
+function RequestMenu({
+  onCreateLink,
+  onCopyProfile,
+  onCopyUri
+}: {
+  onCreateLink: () => void
+  onCopyProfile?: () => void
+  onCopyUri: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const run = (action: () => void) => () => {
+    setOpen(false)
+    action()
+  }
+
+  return (
+    <div className="menu" ref={ref}>
+      <button
+        type="button"
+        className="btn btn-primary"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Link2 size={16} /> Request payment <ChevronDown size={15} />
+      </button>
+      {open ? (
+        <div className="menu-list" role="menu">
+          <button type="button" role="menuitem" onClick={run(onCreateLink)}>
+            <Link2 size={15} />
+            <span>
+              <strong>Create payment link</strong>
+              <small>Set an amount and a private note</small>
+            </span>
+          </button>
+          {onCopyProfile ? (
+            <button type="button" role="menuitem" onClick={run(onCopyProfile)}>
+              <UserRound size={15} />
+              <span>
+                <strong>Copy profile link</strong>
+                <small>Anyone can pay your @name, any amount</small>
+              </span>
+            </button>
+          ) : null}
+          <button type="button" role="menuitem" onClick={run(onCopyUri)}>
+            <Copy size={15} />
+            <span>
+              <strong>Copy zcash: URI</strong>
+              <small>For wallets that don't use Zac</small>
+            </span>
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function RequestModal({
+  open,
+  onClose,
+  address,
+  network,
+  username
+}: {
+  open: boolean
+  onClose: () => void
+  address: string
+  network: PaymentPayload['net']
+  username?: string
+}) {
+  const toast = useToast()
+  const [amount, setAmount] = useState('')
+  const [note, setNote] = useState('')
+  const [invoiceId, setInvoiceId] = useState(() => newInvoiceId())
+  const [qrMode, setQrMode] = useState<'link' | 'zip321'>('link')
+
+  // Every request opened from the menu is a new invoice.
+  useEffect(() => {
+    if (open) setInvoiceId(newInvoiceId())
+  }, [open])
+
+  const amountValid = !amount || (isValidAmount(amount) && Number(amount) > 0)
+  const noteBytes = bytesLength(note)
+  const noteValid = noteBytes <= 300
+
+  const payload: PaymentPayload = useMemo(
+    () => ({
+      v: 1,
+      net: network,
+      to: address,
+      h: username,
+      a: amount && amountValid ? amount : undefined,
+      m: note && noteValid ? note : undefined,
+      i: invoiceId,
+      t: Date.now()
+    }),
+    [network, address, username, amount, amountValid, note, noteValid, invoiceId]
+  )
+  const link = payLink(encodePaymentPayload(payload))
+  const zipUri = buildZip321Uri(payload)
+  const value = qrMode === 'link' ? link : zipUri
+
+  return (
+    <Modal open={open} onClose={onClose} title="Create payment link" className="request-modal">
+      <div className="request-form-grid">
+        <label className="field">
+          <span>Amount <em>optional</em></span>
+          <div className="amount-input compact">
+            <input
+              value={amount}
+              onChange={(event) => setAmount(event.target.value.replace(',', '.'))}
+              placeholder="Any amount"
+              inputMode="decimal"
+              className={!amountValid ? 'is-invalid' : undefined}
+            />
+            <span className="amount-suffix">ZEC</span>
           </div>
-          <div className="address-qr">
-            <Qr value={`zcash:${connection.address}`} size={196} />
-          </div>
-          <div className="address-text" title={connection.address}>{connection.address}</div>
-          <div className="address-actions">
-            <CopyButton value={connection.address} label="Copy address" />
-            <CopyButton value={`zcash:${connection.address}`} label="Copy zcash: URI" />
+          {!amountValid ? <span className="field-hint tone-error">Invalid amount.</span> : null}
+        </label>
+        <label className="field">
+          <span>Private note <em>optional</em></span>
+          <input
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="e.g. Coffee, invoice 42"
+            maxLength={320}
+            className={!noteValid ? 'is-invalid' : undefined}
+          />
+          <span className={noteValid ? 'field-hint' : 'field-hint tone-error'}>{noteBytes}/300 bytes</span>
+        </label>
+      </div>
+
+      <div className="qr-toggle">
+        <button type="button" className={qrMode === 'link' ? 'is-active' : ''} onClick={() => setQrMode('link')}>
+          <QrCode size={14} /> Zac link
+        </button>
+        <button type="button" className={qrMode === 'zip321' ? 'is-active' : ''} onClick={() => setQrMode('zip321')}>
+          <QrCode size={14} /> Any wallet
+        </button>
+      </div>
+
+      <div className="request-result">
+        <div className="request-qr">
+          <Qr value={value} size={176} />
+        </div>
+        <div className="request-details">
+          <code className="request-link">{value}</code>
+          <div className="request-actions">
+            <CopyButton value={value} label="Copy" className="btn-secondary" />
+            {qrMode === 'link' ? <ShareButton value={link} title={`Pay ${username ? `@${username}` : 'me'} privately`} /> : null}
+            <button
+              type="button"
+              className="btn btn-quiet btn-sm"
+              onClick={() => {
+                setInvoiceId(newInvoiceId())
+                toast.info('New request id created')
+              }}
+            >
+              <Sparkles size={14} /> New id
+            </button>
           </div>
           <p className="muted small">
-            Scan with any Zcash wallet. This address only receives shielded funds.
+            {qrMode === 'link'
+              ? 'Request details stay after the # in the link. Our server never sees them.'
+              : 'Any ZIP-321 wallet can scan this. The note travels as the encrypted memo.'}
           </p>
-        </section>
-
-        <section className="card request-card">
-          <div className="section-head">
-            <div>
-              <p className="eyebrow">Payment request</p>
-              <h2>Create a private link</h2>
-            </div>
-            <Link2 size={20} className="muted" />
-          </div>
-          <div className="request-form-grid">
-            <label className="field">
-              <span>Amount <em>optional</em></span>
-              <div className="amount-input compact">
-                <input
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value.replace(',', '.'))}
-                  placeholder="Any amount"
-                  inputMode="decimal"
-                  className={!amountValid ? 'is-invalid' : undefined}
-                />
-                <span className="amount-suffix">ZEC</span>
-              </div>
-              {!amountValid ? <span className="field-hint tone-error">Invalid amount.</span> : null}
-            </label>
-            <label className="field">
-              <span>Private note <em>optional</em></span>
-              <input
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-                placeholder="e.g. Coffee, invoice 42"
-                maxLength={320}
-                className={!noteValid ? 'is-invalid' : undefined}
-              />
-              <span className={noteValid ? 'field-hint' : 'field-hint tone-error'}>{noteBytes}/300 bytes</span>
-            </label>
-          </div>
-
-          <div className="qr-toggle">
-            <button type="button" className={qrMode === 'link' ? 'is-active' : ''} onClick={() => setQrMode('link')}>
-              <QrCode size={14} /> Zac link
-            </button>
-            <button type="button" className={qrMode === 'zip321' ? 'is-active' : ''} onClick={() => setQrMode('zip321')}>
-              <QrCode size={14} /> Any wallet
-            </button>
-          </div>
-
-          <div className="request-result">
-            <div className="request-qr">
-              {qrMode === 'link' ? <Qr value={link} size={188} /> : <Qr value={zipUri} size={188} />}
-            </div>
-            <div className="request-details">
-              <span className="eyebrow">{qrMode === 'link' ? 'Zac payment link' : 'ZIP-321 payment URI'}</span>
-              <code className="request-link">{qrMode === 'link' ? link : zipUri}</code>
-              <div className="request-actions">
-                <CopyButton value={qrMode === 'link' ? link : zipUri} label="Copy" />
-                {qrMode === 'link' ? <ShareButton value={link} title={`Pay @${ownClaim?.username ?? 'me'} privately`} /> : null}
-                <button
-                  type="button"
-                  className="btn btn-quiet btn-sm"
-                  onClick={() => {
-                    setInvoiceId(newInvoiceId())
-                    toast.info('New request id created')
-                  }}
-                >
-                  <Sparkles size={14} /> New id
-                </button>
-              </div>
-              <p className="muted small">
-                {qrMode === 'link'
-                  ? 'Everything after the # stays in the browser. Our server never sees the amount or who this is for.'
-                  : 'Any ZIP-321 wallet can scan this. The note is included as the encrypted memo.'}
-              </p>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <section className="card identity-wide">
-        {ownClaim ? (
-          <>
-            <div className="identity-top">
-              <Avatar seed={ownClaim.address} label={`@${ownClaim.username}`} size={50} />
-              <div>
-                <p className="eyebrow">Your public name</p>
-                <h2>@{ownClaim.username}</h2>
-              </div>
-              <div className="identity-wide-actions">
-                <CopyButton value={profileLink(ownClaim.username)} label="Copy profile link" />
-                <ShareButton value={profileLink(ownClaim.username)} title={`Pay @${ownClaim.username} privately`} />
-              </div>
-            </div>
-            <p className="muted small">
-              The name and address are public, like a phone book. Transaction details are not.
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="identity-top">
-              <span className="icon-orb"><Fingerprint size={24} /></span>
-              <div>
-                <p className="eyebrow">Make it memorable</p>
-                <h2>Claim your @name</h2>
-              </div>
-              <div className="identity-wide-actions">
-                <button type="button" className="btn btn-primary" onClick={() => setClaimOpen(true)}>
-                  <Sparkles size={16} /> Claim a name
-                </button>
-              </div>
-            </div>
-            <p className="muted small">
-              A name is a public pointer to your shielded address. It costs nothing and signs no transaction.
-            </p>
-          </>
-        )}
-      </section>
-
-      <section className="card activity-card">
-        <div className="section-head">
-          <div>
-            <p className="eyebrow">Incoming</p>
-            <h2>Payments received</h2>
-          </div>
-          <div className="section-actions">
-            <button type="button" className="btn btn-quiet btn-sm" onClick={() => void refreshWallet()}>
-              Refresh
-            </button>
-          </div>
         </div>
-        {incoming.length ? (
-          <div className="tx-list">
-            {incoming.slice(0, 12).map((tx) => (
-              <TxRow key={`${tx.txid}-${tx.timestamp}`} tx={tx} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            icon={<ArrowDownToLine size={22} />}
-            title="No incoming payments yet"
-            action={<CopyButton value={connection.address} label="Copy address" />}
-          >
-            Share your @name or a payment link. Received payments appear here after the wallet syncs.
-          </EmptyState>
-        )}
-      </section>
-
-      <div className="privacy-note">
-        <Lock size={15} />
-        <span>
-          Your address is public only if you share it. Payments are shielded on-chain. For stronger separation,
-          use a separate wallet account per identity.
-        </span>
       </div>
-
-      <ClaimModal open={claimOpen} onClose={() => setClaimOpen(false)} />
-      <Link to="/" className="back-home"><ArrowLeft size={15} /> Back home</Link>
-    </div>
+    </Modal>
   )
 }
