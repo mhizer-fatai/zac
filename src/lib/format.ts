@@ -56,3 +56,11 @@ export function plural(count: number, singular: string, pluralForm = `${singular
 export function bytesLength(value: string): number {
   return new TextEncoder().encode(value).length
 }
+
+/**
+ * Scroll to an in-page section. Plain #anchors can't be used: with the hash
+ * router, "#how" would be read as a route.
+ */
+export function scrollToSection(id: string): void {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}

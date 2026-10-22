@@ -7,7 +7,15 @@ import { useDirectory } from '../lib/directory'
 import { Avatar } from './Avatar'
 import { Logo } from './Logo'
 import { NetworkBadge } from './NetworkBadge'
-import { shortAddress } from '../lib/format'
+import { scrollToSection, shortAddress } from '../lib/format'
+
+const SOURCE_URL = (import.meta.env.VITE_SOURCE_URL as string | undefined) ?? ''
+
+const landingSections = [
+  { id: 'how', label: 'How it works' },
+  { id: 'privacy', label: 'Privacy' },
+  { id: 'verify', label: 'Verify it' }
+]
 
 const navItems = [
   { to: '/', label: 'Home', icon: Home, end: true },
@@ -26,6 +34,10 @@ export function Layout() {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
   }, [location.pathname])
 
+  // Signed-out visitors on "/" see the marketing page, so the nav points at
+  // its sections instead of app screens they can't use yet.
+  const onLanding = location.pathname === '/' && status !== 'connected'
+
   const walletLabel = connection
     ? handle
       ? `@${handle}`
@@ -40,16 +52,27 @@ export function Layout() {
             <Logo />
           </NavLink>
           <nav className="nav-desktop" aria-label="Primary">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) => cn('nav-link', isActive && 'is-active')}
-              >
-                {item.label}
-              </NavLink>
-            ))}
+            {onLanding
+              ? landingSections.map((section) => (
+                  <button
+                    key={section.id}
+                    type="button"
+                    className="nav-link"
+                    onClick={() => scrollToSection(section.id)}
+                  >
+                    {section.label}
+                  </button>
+                ))
+              : navItems.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    className={({ isActive }) => cn('nav-link', isActive && 'is-active')}
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
           </nav>
           <div className="topbar-actions">
             {status === 'connected' && connection ? (
@@ -69,7 +92,7 @@ export function Layout() {
               </NavLink>
             ) : (
               <button type="button" className="btn btn-primary btn-sm" onClick={() => void connect().catch(() => {})}>
-                Connect
+                Connect wallet
               </button>
             )}
           </div>
@@ -84,12 +107,15 @@ export function Layout() {
         <div className="footer-inner">
           <div className="footer-brand">
             <Logo size={22} />
-            <p>Private payments, by name.</p>
+            <p>Built for ZECATHON 2026 · Track 01 Shielded Payments</p>
           </div>
           <div className="footer-links">
+            {SOURCE_URL ? (
+              <a href={SOURCE_URL} target="_blank" rel="noreferrer noopener">GitHub</a>
+            ) : null}
             <NavLink to="/privacy">Privacy model</NavLink>
             <NavLink to="/settings">Settings</NavLink>
-            <span className="footer-note">Shielded by Zcash · MIT</span>
+            <span className="footer-note">MIT</span>
           </div>
         </div>
       </footer>
