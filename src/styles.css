@@ -34,6 +34,12 @@
 
 html { color-scheme: dark; }
 
+/* The page must never be wider than the screen. clip (not hidden) keeps
+   position: sticky working; anything that still overflows is a bug in its
+   own component, and min-width: 0 below lets flex/grid children shrink. */
+html, body { max-width: 100%; overflow-x: clip; }
+.page, .card, .main, .landing { min-width: 0; }
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -56,6 +62,8 @@ img, svg { display: block; }
 
 h1, h2, h3, h4, p { margin: 0; }
 h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.02em; }
+/* Long @names must wrap rather than widen the page on small phones. */
+h1, h2, h3, h4, .receive-name { overflow-wrap: anywhere; }
 
 code { font-family: var(--mono); }
 
@@ -808,7 +816,7 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
 .dash-head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
 .address-mini { font-family: var(--mono); font-size: 10.5px; color: var(--muted-2); }
 
-.dash-grid { display: grid; grid-template-columns: 1.22fr 0.78fr; gap: 16px; margin-bottom: 16px; }
+.dash-grid { display: grid; grid-template-columns: minmax(0, 1.22fr) minmax(0, 0.78fr); gap: 16px; margin-bottom: 16px; }
 .balance-card {
   position: relative;
   overflow: hidden;
@@ -913,7 +921,7 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
 /* ------------------------------------------------------------------ */
 /* Send                                                               */
 /* ------------------------------------------------------------------ */
-.send-grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 18px; align-items: start; }
+.send-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 18px; align-items: start; }
 .form-card { padding: 26px; }
 .back-link {
   display: inline-flex; align-items: center; gap: 6px;
@@ -1003,7 +1011,7 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
 }
 .request-card { padding: 24px; }
-.request-form-grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 12px; }
+.request-form-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 12px; }
 .qr-toggle {
   display: inline-flex;
   gap: 3px;
@@ -1043,7 +1051,7 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
 /* ------------------------------------------------------------------ */
 /* Pay                                                                */
 /* ------------------------------------------------------------------ */
-.pay-wrap { display: grid; grid-template-columns: 1.12fr 0.88fr; gap: 18px; align-items: start; max-width: 980px; margin: 0 auto; }
+.pay-wrap { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr); gap: 18px; align-items: start; max-width: 980px; margin: 0 auto; }
 .pay-card { padding: 30px; }
 .pay-from { display: flex; align-items: center; gap: 15px; margin: 24px 0 28px; }
 .pay-from h1 { font-size: 34px; line-height: 1.05; margin: 2px 0 5px; }
@@ -1120,7 +1128,7 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
 /* ------------------------------------------------------------------ */
 /* Profile                                                            */
 /* ------------------------------------------------------------------ */
-.profile-grid { display: grid; grid-template-columns: 1.08fr 0.92fr; gap: 18px; align-items: start; }
+.profile-grid { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr); gap: 18px; align-items: start; }
 .profile-card { padding: 32px; }
 .profile-head { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; }
 .profile-identity h1 { font-size: clamp(30px, 3.6vw, 42px); margin: 2px 0 8px; }
@@ -1232,10 +1240,10 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
 .legal-card p:last-child { margin-bottom: 0; }
 .legal-card code { color: #d8c79d; font-size: 11px; }
 .legal-card a { color: var(--gold); text-decoration: underline; text-underline-offset: 2px; }
-.legal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.legal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
 .legal-grid .legal-card { margin-bottom: 0; }
 .privacy-table { display: flex; flex-direction: column; }
-.privacy-row { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 16px; padding: 11px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
+.privacy-row { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 16px; padding: 11px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
 .privacy-row:first-child { border-top: 0; }
 .privacy-row > span:first-child { color: var(--text); }
 .privacy-row > span:last-child { color: var(--muted); }
@@ -1292,13 +1300,13 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
 /* Responsive                                                         */
 /* ------------------------------------------------------------------ */
 @media (max-width: 960px) {
-  .dash-grid { grid-template-columns: 1fr; }
-  .send-grid { grid-template-columns: 1fr; }
+  .dash-grid { grid-template-columns: minmax(0, 1fr); }
+  .send-grid { grid-template-columns: minmax(0, 1fr); }
   .preview-card { position: static; }
-  .pay-wrap { grid-template-columns: 1fr; }
+  .pay-wrap { grid-template-columns: minmax(0, 1fr); }
   .pay-side { position: static; }
-  .profile-grid { grid-template-columns: 1fr; }
-  .legal-grid { grid-template-columns: 1fr; }
+  .profile-grid { grid-template-columns: minmax(0, 1fr); }
+  .legal-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 760px) {
@@ -1336,8 +1344,8 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
   .dash-head { flex-direction: column; align-items: flex-start; }
   .dash-head-right { flex-direction: row; align-items: center; }
   .page-head h1 { font-size: 36px; }
-  .request-form-grid { grid-template-columns: 1fr; }
-  .request-result { grid-template-columns: 1fr; }
+  .request-form-grid { grid-template-columns: minmax(0, 1fr); }
+  .request-result { grid-template-columns: minmax(0, 1fr); }
   .request-qr { display: flex; justify-content: center; }
   .toast-stack { bottom: 78px; }
 }
