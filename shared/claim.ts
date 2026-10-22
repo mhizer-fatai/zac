@@ -1,3 +1,5 @@
+import { secp256k1 } from '@noble/curves/secp256k1.js'
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js'
 import { verifyMessageSignature } from '@noir-wallet/sdk'
 import { classifyAddress } from './address'
 import type { Claim, ZcashNetwork } from './types'
@@ -57,5 +59,19 @@ export function verifyClaim(claim: Claim): boolean {
     return result.valid && result.pubkeyMatch === true
   } catch {
     return false
+  }
+}
+
+/**
+ * Canonical (uncompressed, lowercase hex) form of a secp256k1 public key,
+ * so a compressed key from the wallet matches the uncompressed key the
+ * server recovered from the claim signature. Null if it is not a valid key.
+ */
+export function normalizePubkey(hex: string | undefined): string | null {
+  if (!hex) return null
+  try {
+    return bytesToHex(secp256k1.Point.fromBytes(hexToBytes(hex.replace(/^0x/, ''))).toBytes(false))
+  } catch {
+    return null
   }
 }

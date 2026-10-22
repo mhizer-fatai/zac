@@ -21,7 +21,7 @@ import { RevealNameToggle, useRevealName } from '../components/RevealName'
 import { Spinner } from '../components/Spinner'
 import { formatAmount } from '../../shared/amount'
 import { shortAddress, timeAgo } from '../lib/format'
-import { useDirectory } from '../lib/directory'
+import { useDirectory, useOwnClaim } from '../lib/directory'
 import { buildReceiptMemo } from '../lib/receipt'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
@@ -30,7 +30,7 @@ import { useWalletData } from '../lib/useWalletData'
 export function PayPage() {
   const { payload: encoded } = useParams<{ payload: string }>()
   const { status, connection, connect, adapter } = useWallet()
-  const { resolve, findByAddress, loading: directoryLoading } = useDirectory()
+  const { resolve, loading: directoryLoading } = useDirectory()
   const { balance, refresh: refreshWallet } = useWalletData(status === 'connected')
   const toast = useToast()
 
@@ -41,7 +41,7 @@ export function PayPage() {
 
   const payload: PaymentPayload | null = decoded.ok ? decoded.payload : null
   const claim = payload?.h ? resolve(payload.h) : undefined
-  const ownClaim = connection ? findByAddress(connection.address) : undefined
+  const ownClaim = useOwnClaim()
   const [revealName, setRevealName] = useRevealName()
 
   const [customAmount, setCustomAmount] = useState('')
@@ -62,7 +62,7 @@ export function PayPage() {
   const handleMissing = Boolean(payload?.h && !claim && !directoryLoading)
   const directoryChecking = Boolean(payload?.h) && !claim && directoryLoading
   const networkMismatch = Boolean(payload && connection && payload.net !== connection.network)
-  const selfRequest = Boolean(payload && connection && payload.to === connection.address)
+  const selfRequest = Boolean(payload && connection && (payload.to === connection.address || payload.to === ownClaim?.address))
   const canPay =
     Boolean(payload) &&
     Boolean(connection) &&

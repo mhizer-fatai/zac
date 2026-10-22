@@ -23,7 +23,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { formatAmount } from '../../shared/amount'
 import { scrollToSection, shortAddress } from '../lib/format'
 import { profileLink } from '../lib/links'
-import { useDirectory } from '../lib/directory'
+import { useDirectory, useOwnClaim } from '../lib/directory'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
 import { useWalletData } from '../lib/useWalletData'
@@ -36,12 +36,12 @@ import { TxListEmpty, TxRow } from '../components/TxRow'
 
 export function Home() {
   const { status, connection, connect } = useWallet()
-  const { findByAddress, claims } = useDirectory()
+  const { claims } = useDirectory()
   const toast = useToast()
   const navigate = useNavigate()
   const [claimOpen, setClaimOpen] = useState(false)
   const { balance, history, loading, error, refresh } = useWalletData(status === 'connected')
-  const ownClaim = connection ? findByAddress(connection.address) : undefined
+  const ownClaim = useOwnClaim()
 
   async function handleConnect() {
     try {

@@ -17,7 +17,8 @@ import {
   zatoshiToZec,
   zecToZatoshi
 } from '../amount'
-import { buildClaimMessage, verifyClaim } from '../claim'
+import { buildClaimMessage, normalizePubkey, verifyClaim } from '../claim'
+import { findOwnClaim } from '../../src/lib/directory'
 import {
   buildPaymentMemo,
   cleanMemo,
@@ -329,5 +330,36 @@ describe('signed receipts', () => {
     expect(signCalls).toBe(0)
     expect(memo).toBe('zac1|inv4|-|gift')
     expect(receiptSender(parsePaymentMemo(memo), context(TESTNET_UA))).toBeNull()
+  })
+})
+
+describe('own name lookup', () => {
+  const secret = secp256k1.utils.randomSecretKey()
+  const uncompressed = Buffer.from(secp256k1.getPublicKey(secret, false)).toString('hex')
+  const compressed = Buffer.from(secp256k1.getPublicKey(secret, true)).toString('hex')
+  const claim = { username: 'fataidev', network: 'testnet', address: TESTNET_UA, pubkey: uncompressed } as Claim
+  const rotated = encodeUnifiedAddress('utest', [{ typecode: 2, data: fromHex(SAPLING_RAW) }])
+  const connection = (address: string, signingKey?: string, network: 'testnet' | 'mainnet' = 'testnet') => ({
+    address,
+    network,
+    accounts: [],
+    signingKey
+  })
+
+  it('finds the name by signing key even after the wallet rotates its address', () => {
+    expect(findOwnClaim([claim], connection(rotated, compressed))).toBe(claim)
+    expect(findOwnClaim([claim], connection(rotated, uncompressed))).toBe(claim)
+  })
+
+  it('falls back to the exact address when the key is unavailable', () => {
+    expect(findOwnClaim([claim], connection(TESTNET_UA))).toBe(claim)
+    expect(findOwnClaim([claim], connection(rotated))).toBeUndefined()
+  })
+
+  it('ignores other keys and other networks', () => {
+    const other = Buffer.from(secp256k1.getPublicKey(secp256k1.utils.randomSecretKey(), true)).toString('hex')
+    expect(findOwnClaim([claim], connection(rotated, other))).toBeUndefined()
+    expect(findOwnClaim([claim], connection(rotated, compressed, 'mainnet'))).toBeUndefined()
+    expect(normalizePubkey('not-a-key')).toBeNull()
   })
 })

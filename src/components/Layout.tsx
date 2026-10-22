@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { cn } from '../lib/format'
 import { useWallet } from '../lib/walletContext'
-import { useDirectory } from '../lib/directory'
+import { useOwnClaim } from '../lib/directory'
 import { Avatar } from './Avatar'
 import { Logo } from './Logo'
 import { NetworkBadge } from './NetworkBadge'
@@ -27,8 +27,7 @@ const navItems = [
 export function Layout() {
   const location = useLocation()
   const { connection, status, connect } = useWallet()
-  const { findByAddress } = useDirectory()
-  const handle = connection ? findByAddress(connection.address)?.username : undefined
+  const handle = useOwnClaim()?.username
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })

@@ -7,7 +7,7 @@ import { normalizeUsername, validateUsername } from '../../shared/username'
 import { claimUsername } from '../lib/api'
 import { cn } from '../lib/format'
 import { profileLink } from '../lib/links'
-import { useDirectory } from '../lib/directory'
+import { findOwnClaim, useDirectory } from '../lib/directory'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
 import { CopyButton } from './CopyButton'
@@ -33,7 +33,8 @@ export function ClaimModal({
   initialName?: string
 }) {
   const { connection, adapter, connect, status } = useWallet()
-  const { resolve, refresh } = useDirectory()
+  const { resolve, refresh, claims } = useDirectory()
+  const ownClaim = findOwnClaim(claims, connection)
   const toast = useToast()
   const [input, setInput] = useState('')
   const [phase, setPhase] = useState<Phase>('form')
@@ -44,17 +45,27 @@ export function ClaimModal({
   useEffect(() => {
     if (!open) return
     setInput(initialName ?? '')
-    setPhase('form')
     setError(null)
-    setClaimed(null)
+    // A wallet that already owns a name is shown it instead of a new form.
+    setClaimed(ownClaim ?? null)
+    setPhase(ownClaim ? 'done' : 'form')
     const id = window.setTimeout(() => inputRef.current?.focus(), 60)
     return () => window.clearTimeout(id)
   }, [open, initialName])
 
+  // Connecting from inside the modal can reveal that this wallet already
+  // owns a name; show it rather than asking for another.
+  useEffect(() => {
+    if (open && ownClaim && phase === 'form') {
+      setClaimed(ownClaim)
+      setPhase('done')
+    }
+  }, [open, ownClaim, phase])
+
   const normalized = normalizeUsername(input)
   const check = normalized ? validateUsername(normalized) : null
   const existing = check?.ok ? resolve(check.username) : undefined
-  const alreadyMine = Boolean(existing && connection && existing.address === connection.address)
+  const alreadyMine = Boolean(existing && existing === ownClaim)
   const taken = Boolean(existing && !alreadyMine)
 
   const availability = useMemo(() => {

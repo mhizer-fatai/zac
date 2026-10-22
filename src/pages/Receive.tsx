@@ -16,7 +16,7 @@ import type { PaymentPayload } from '../../shared/types'
 import { isValidAmount } from '../../shared/amount'
 import { bytesLength } from '../lib/format'
 import { payLink, profileLink } from '../lib/links'
-import { useDirectory } from '../lib/directory'
+import { useOwnClaim } from '../lib/directory'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
 import { useWalletData } from '../lib/useWalletData'
@@ -30,7 +30,6 @@ import { TxListEmpty, TxRow } from '../components/TxRow'
 
 export function ReceivePage() {
   const { status, connection, connect } = useWallet()
-  const { findByAddress } = useDirectory()
   const { history, refresh: refreshWallet } = useWalletData(status === 'connected')
   const toast = useToast()
   const [claimOpen, setClaimOpen] = useState(false)
@@ -39,7 +38,7 @@ export function ReceivePage() {
   const [invoiceId, setInvoiceId] = useState(() => newInvoiceId())
   const [qrMode, setQrMode] = useState<'link' | 'zip321'>('link')
 
-  const ownClaim = connection ? findByAddress(connection.address) : undefined
+  const ownClaim = useOwnClaim()
   const amountValid = !amount || (isValidAmount(amount) && Number(amount) > 0)
   const noteBytes = bytesLength(note)
   const noteValid = noteBytes <= 300
@@ -49,14 +48,17 @@ export function ReceivePage() {
     return {
       v: 1,
       net: connection.network,
-      to: connection.address,
+      // With a name, request payment to the name's registered address so the
+      // payer's name check passes even if the wallet now reports a different
+      // (rotated) address for the same account.
+      to: ownClaim?.address ?? connection.address,
       h: ownClaim?.username,
       a: amount && amountValid ? amount : undefined,
       m: note && noteValid ? note : undefined,
       i: invoiceId,
       t: Date.now()
     }
-  }, [connection, ownClaim?.username, amount, amountValid, note, noteValid, invoiceId])
+  }, [connection, ownClaim?.username, ownClaim?.address, amount, amountValid, note, noteValid, invoiceId])
 
   const encoded = payload ? encodePaymentPayload(payload) : ''
   const link = encoded ? payLink(encoded) : ''

@@ -14,6 +14,12 @@ export interface WalletConnection {
   transparent?: string
   network: ZcashNetwork
   accounts: WalletAccount[]
+  /**
+   * The wallet's derived signing key (the key that signs name claims).
+   * Ownership of an @name is matched on this, because a wallet may hand out
+   * a different shielded address on a later connect.
+   */
+  signingKey?: string
 }
 
 export interface WalletBalance {
@@ -106,14 +112,24 @@ class NoirAdapter implements WalletAdapter {
 
   async connect(): Promise<WalletConnection> {
     const result = await this.wallet().zcash.connect()
-    return connectionFromResult(result)
+    return this.withSigningKey(connectionFromResult(result))
   }
 
   async getExisting(): Promise<WalletConnection | null> {
     const wallet = getNoirWallet()
     if (!wallet) return null
     const result = await wallet.zcash.getAccounts()
-    return result ? connectionFromResult(result) : null
+    return result ? this.withSigningKey(connectionFromResult(result)) : null
+  }
+
+  /** No popup per the SDK; returns null while locked, so this is best-effort. */
+  private async withSigningKey(connection: WalletConnection): Promise<WalletConnection> {
+    try {
+      const key = await this.wallet().zcash.getPublicKey({ signingMode: 'derived' })
+      return key?.pubkey ? { ...connection, signingKey: key.pubkey } : connection
+    } catch {
+      return connection
+    }
   }
 
   async getBalance(): Promise<WalletBalance> {

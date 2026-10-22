@@ -9,9 +9,11 @@ import {
   type ReactNode
 } from 'react'
 import type { Claim, DirectorySnapshot } from '../../shared/types'
-import { verifyClaim } from '../../shared/claim'
+import { normalizePubkey, verifyClaim } from '../../shared/claim'
 import { normalizeUsername } from '../../shared/username'
 import { loadDirectory } from './api'
+import type { WalletConnection } from './wallet'
+import { useWallet } from './walletContext'
 
 const CACHE_KEY = 'zac.directory.cache.v1'
 const CACHE_TTL_MS = 10 * 60 * 1000
@@ -110,6 +112,27 @@ export function DirectoryProvider({ children }: { children: ReactNode }) {
   )
 
   return <DirectoryContext.Provider value={value}>{children}</DirectoryContext.Provider>
+}
+
+/**
+ * The connected wallet's own @name, if it has one. Matched first by the
+ * wallet's signing key (the key that owns the claim, stable across address
+ * rotation), then by exact address.
+ */
+export function findOwnClaim(claims: Claim[], connection: WalletConnection | null): Claim | undefined {
+  if (!connection) return undefined
+  const key = normalizePubkey(connection.signingKey)
+  const sameNetwork = claims.filter((claim) => claim.network === connection.network)
+  return (
+    (key ? sameNetwork.find((claim) => normalizePubkey(claim.pubkey) === key) : undefined) ??
+    sameNetwork.find((claim) => claim.address === connection.address)
+  )
+}
+
+export function useOwnClaim(): Claim | undefined {
+  const { connection } = useWallet()
+  const { claims } = useDirectory()
+  return useMemo(() => findOwnClaim(claims, connection), [claims, connection])
 }
 
 export function useDirectory(): DirectoryContextValue {

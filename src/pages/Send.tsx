@@ -19,7 +19,7 @@ import { NetworkBadge } from '../components/NetworkBadge'
 import { RevealNameToggle, useRevealName } from '../components/RevealName'
 import { Spinner } from '../components/Spinner'
 import { bytesLength, shortAddress } from '../lib/format'
-import { useDirectory } from '../lib/directory'
+import { useDirectory, useOwnClaim } from '../lib/directory'
 import { buildReceiptMemo } from '../lib/receipt'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
@@ -77,7 +77,7 @@ export function SendPage() {
     () => (recipientInput.trim() ? resolveRecipient(recipientInput, resolve, findByAddress) : {}),
     [recipientInput, resolve, findByAddress]
   )
-  const ownClaim = connection ? findByAddress(connection.address) : undefined
+  const ownClaim = useOwnClaim()
   const [revealName, setRevealName] = useRevealName()
   const fromName = revealName ? ownClaim?.username : undefined
   const recipient = resolved.recipient
