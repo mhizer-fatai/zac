@@ -1,0 +1,33 @@
+# Netlify hosts the static app. /api/* is proxied to the Zac API on the VPS
+# (see docs/DEPLOY.md), so the browser only ever talks to this one origin and
+# the CSP below can keep connect-src 'self'.
+#
+# Required Netlify environment variable:
+#   ZAC_API_ORIGIN   e.g. https://api.example.com   (no trailing slash)
+# Optional:
+#   VITE_SOURCE_URL  e.g. https://github.com/mhizer-fatai/zac
+
+[build]
+  command = "npm run build && node scripts/netlify-redirects.mjs"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+# Same privacy headers the Node server sends when it serves the app itself.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    Referrer-Policy = "no-referrer"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-origin"
+
+# Hashed build assets never change, so they can be cached forever.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

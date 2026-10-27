@@ -196,6 +196,11 @@ extension, its sync servers and its analytics settings. Zac does not control the
 - **The sharing channel.** A link is readable by whoever holds it: a chat app, email provider, clipboard
   manager or shoulder-surfer. The fragment protects you from our server and from link previews, not
   from the messenger.
+- **The static host.** The public deployment serves the app from Netlify and proxies `/api/*` through
+  it to the Zac API (see `docs/DEPLOY.md`). Netlify can therefore see page loads and the two kinds of
+  API request — the directory download and name claims — with your IP and time, under Netlify's own
+  logging policy. It cannot see payment links (fragments are never sent) or payments. Self-host the
+  static files to remove this party.
 - **Network observers.** Zac does not add Tor, a VPN or a mixnet. Your ISP/hosting provider can see that
   you use a Zcash app and when.
 - **Address reuse.** A name points to one shielded address. Address reuse is normal for a phone-book

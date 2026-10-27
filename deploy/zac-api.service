@@ -1,0 +1,36 @@
+# systemd unit for the Zac API. Install as /etc/systemd/system/zac-api.service
+# (see docs/DEPLOY.md). Runs as an unprivileged user, listens on localhost
+# only (Caddy terminates HTTPS in front of it) and can write nothing except
+# the claims directory.
+[Unit]
+Description=Zac API (signed name directory)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=zac
+Group=zac
+WorkingDirectory=/opt/zac
+Environment=HOST=127.0.0.1
+Environment=PORT=8787
+Environment=ZAC_DATA_DIR=/var/lib/zac
+ExecStart=/opt/zac/node_modules/.bin/tsx server/index.ts
+Restart=on-failure
+RestartSec=3
+
+# Creates /var/lib/zac owned by the zac user and keeps it across restarts.
+StateDirectory=zac
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

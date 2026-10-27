@@ -145,6 +145,10 @@ recipient app parses it; other wallets show the raw memo. No receipt data goes t
 
 ## Deployment
 
+The public deployment is Netlify for the static app plus a VPS for the API, with Netlify
+proxying `/api/*` so the browser talks to one origin. Step-by-step: `docs/DEPLOY.md`
+(`netlify.toml`, `scripts/netlify-redirects.mjs`, `deploy/zac-api.service`, `deploy/Caddyfile`).
+
 The simplest production shape is one Node service:
 
 ```

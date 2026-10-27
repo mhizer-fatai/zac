@@ -1,0 +1,17 @@
+# Caddy in front of the Zac API. Install as /etc/caddy/Caddyfile and replace
+# api.example.com with your API hostname (see docs/DEPLOY.md).
+#
+# Caddy fetches and renews the HTTPS certificate automatically. It writes no
+# access log unless a `log` directive is added, which keeps the "no request
+# logs" promise in docs/PRIVACY.md true on the VPS.
+api.example.com {
+	encode gzip
+
+	# Only the API is exposed; everything else is a plain 404.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8787
+	}
+	handle {
+		respond 404
+	}
+}
