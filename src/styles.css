@@ -1634,3 +1634,4 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
   text-align: center;
 }
 .sealed-card h1 { font-size: 28px; }
+.sealed-expiry.is-expired { color: var(--red); }

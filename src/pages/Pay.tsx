@@ -66,6 +66,16 @@ export function PayPage({
   const [error, setError] = useState<string | null>(null)
   const [showAddress, setShowAddress] = useState(false)
 
+  // Sealed links expire: tick a live countdown and stop payment at zero.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!expiresAt) return
+    const id = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [expiresAt])
+  const remainingMs = expiresAt ? Math.max(0, expiresAt - now) : 0
+  const linkExpired = Boolean(expiresAt) && remainingMs === 0
+  const countdown = `${Math.floor(remainingMs / 60000)}:${String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, '0')}`
   useEffect(() => {
     setCustomAmount('')
     setTxid(null)
@@ -86,6 +96,7 @@ export function PayPage({
     !handleMissing &&
     !directoryChecking &&
     !networkMismatch &&
+    !linkExpired &&
     amountValid &&
     !sending
   const zipUri = useMemo(
@@ -209,7 +220,11 @@ export function PayPage({
             <span className="chip chip-gold">
               <ShieldCheck size={14} /> {sealedToken ? 'Sealed payment request' : 'Private payment request'}
             </span>
-            {expiresAt ? <span className="sealed-expiry">Expires {new Date(expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span> : null}
+            {expiresAt ? (
+              <span className={linkExpired ? 'sealed-expiry is-expired' : 'sealed-expiry'}>
+                {linkExpired ? 'Expired' : `Expires in ${countdown}`}
+              </span>
+            ) : null}
             <NetworkBadge network={payload.net} />
           </div>
 
@@ -312,6 +327,12 @@ export function PayPage({
             <div className="alert alert-danger">
               <AlertTriangle size={16} />
               <span>@{payload.h} is not in the Zac directory. This link could be forged.</span>
+            </div>
+          ) : null}
+          {linkExpired ? (
+            <div className="alert alert-danger">
+              <AlertTriangle size={16} />
+              <span>This payment link has expired. Ask for a new one; no payment can be made with it.</span>
             </div>
           ) : null}
           {networkMismatch ? (
