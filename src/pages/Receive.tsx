@@ -1,13 +1,15 @@
-import { ArrowDownToLine, ArrowLeft, ChevronDown, Copy, Link2, QrCode, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
+import { ArrowDownToLine, ArrowLeft, ChevronDown, Copy, Link2, Lock, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { newInvoiceId } from '../../shared/memo'
-import { buildZip321Uri, encodePaymentPayload } from '../../shared/paylink'
+import { encodePaymentPayload } from '../../shared/paylink'
 import type { PaymentPayload } from '../../shared/types'
 import { isValidAmount } from '../../shared/amount'
 import { copyText } from '../lib/clipboard'
 import { bytesLength } from '../lib/format'
-import { payLink, profileLink } from '../lib/links'
+import { appRoot, profileLink } from '../lib/links'
+import { createSealedRequest } from '../lib/sealedRequest'
+import { Spinner } from '../components/Spinner'
 import { useOwnClaim } from '../lib/directory'
 import { formatUsd, useZecPrice, zecToUsd } from '../lib/price'
 import { useToast } from '../lib/toast'
@@ -211,7 +213,6 @@ function RequestModal({
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
   const [invoiceId, setInvoiceId] = useState(() => newInvoiceId())
-  const [qrMode, setQrMode] = useState<'link' | 'zip321'>('link')
 
   // Every request opened from the menu is a new invoice.
   useEffect(() => {
@@ -235,9 +236,43 @@ function RequestModal({
     }),
     [network, address, username, amount, amountValid, note, noteValid, invoiceId]
   )
-  const link = payLink(encodePaymentPayload(payload))
-  const zipUri = buildZip321Uri(payload)
-  const value = qrMode === 'link' ? link : zipUri
+  // Zac links are sealed: encrypted here, stored as ciphertext for 30 minutes,
+  // key in the fragment. A link belongs to the exact form it was made from.
+  const formKey = `${address}|${amount}|${note}|${invoiceId}`
+  const [sealed, setSealed] = useState<{ token: string; expiresAt: number; formKey: string } | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+  const current = sealed && sealed.formKey === formKey ? sealed : null
+  const expired = Boolean(current && current.expiresAt <= now)
+  const link = current && !expired ? `${appRoot()}/#/r/${current.token}` : ''
+
+  useEffect(() => {
+    if (!current) return
+    const id = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [current])
+
+  async function createLink() {
+    if (!amountValid || !noteValid) return
+    setCreating(true)
+    try {
+      const result = await createSealedRequest(encodePaymentPayload(payload))
+      setNow(Date.now())
+      setSealed({ ...result, formKey })
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Could not create the payment link.')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  function newLink() {
+    setSealed(null)
+    setInvoiceId(newInvoiceId())
+  }
+
+  const remaining = current ? Math.max(0, current.expiresAt - now) : 0
+  const countdown = `${Math.floor(remaining / 60000)}:${String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0')}`
 
   return (
     <Modal open={open} onClose={onClose} title="Create payment link" className="request-modal">
@@ -273,42 +308,48 @@ function RequestModal({
         </label>
       </div>
 
-      <div className="qr-toggle">
-        <button type="button" className={qrMode === 'link' ? 'is-active' : ''} onClick={() => setQrMode('link')}>
-          <QrCode size={14} /> Zac link
-        </button>
-        <button type="button" className={qrMode === 'zip321' ? 'is-active' : ''} onClick={() => setQrMode('zip321')}>
-          <QrCode size={14} /> Any wallet
-        </button>
-      </div>
-
-      <div className="request-result">
-        <div className="request-qr">
-          <Qr value={value} size={176} />
-        </div>
-        <div className="request-details">
-          <code className="request-link">{value}</code>
-          <div className="request-actions">
-            <CopyButton value={value} label="Copy" className="btn-secondary" />
-            {qrMode === 'link' ? <ShareButton value={link} title={`Pay ${username ? `@${username}` : 'me'} privately`} /> : null}
-            <button
-              type="button"
-              className="btn btn-quiet btn-sm"
-              onClick={() => {
-                setInvoiceId(newInvoiceId())
-                toast.info('New request id created')
-              }}
-            >
-              <Sparkles size={14} /> New id
-            </button>
+      {link ? (
+        <div className="request-result">
+          <div className="request-qr">
+            <Qr value={link} size={176} />
           </div>
-          <p className="muted small">
-            {qrMode === 'link'
-              ? 'Request details stay after the # in the link. Our server never sees them.'
-              : 'Any ZIP-321 wallet can scan this. The note travels as the encrypted memo.'}
-          </p>
+          <div className="request-details">
+            <p className="sealed-status">
+              <Lock size={13} /> Sealed · one payment · expires in {countdown}
+            </p>
+            <code className="request-link">{link}</code>
+            <div className="request-actions">
+              <CopyButton value={link} label="Copy" className="btn-secondary" />
+              <ShareButton value={link} title={`Pay ${username ? `@${username}` : 'me'} privately`} />
+              <button type="button" className="btn btn-quiet btn-sm" onClick={newLink}>
+                <Sparkles size={14} /> New link
+              </button>
+            </div>
+            <p className="muted small">
+              The request is encrypted in your browser. Zac stores only ciphertext; the key is after the # and never
+              leaves the link. It opens for one payment within 30 minutes.
+            </p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="sealed-create">
+          <p className="muted small">
+            {expired
+              ? 'That link has expired. Create a new one.'
+              : sealed
+                ? 'You changed the request. Create a new link for it.'
+                : 'Zac links are sealed: encrypted in your browser, unreadable without the full link, valid for one payment within 30 minutes.'}
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => (expired ? newLink() : void createLink())}
+            disabled={creating || !amountValid || !noteValid}
+          >
+            {creating ? <Spinner size={14} /> : <Lock size={15} />} {expired ? 'Start a new link' : 'Create sealed link'}
+          </button>
+        </div>
+      )}
     </Modal>
   )
 }

@@ -15,6 +15,10 @@ import {
   listClaims,
   loadStore,
   storeUpdatedAt,
+  createRequest,
+  getRequest,
+  markRequestPaid,
+  purgeExpiredRequests,
   storageKind,
   upsertClaim
 } from './store'
@@ -211,6 +215,71 @@ async function refreshPrice(): Promise<void> {
     console.warn('[zac] price refresh failed:', error instanceof Error ? error.message : error)
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Sealed payment requests. The browser encrypts the request and keeps */
+/* the key in the link fragment; this server only ever holds the       */
+/* ciphertext, for 30 minutes, until it is paid once.                  */
+/* ------------------------------------------------------------------ */
+const REQUEST_TTL_MS = 30 * 60 * 1000
+const REQUEST_ID = /^[A-Za-z0-9_-]{22}$/
+const requestBuckets = new Map<string, { count: number; resetAt: number }>()
+
+function allowRequestCreate(headers: Headers): boolean {
+  const forwarded = headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  const ip = forwarded || headers.get('x-real-ip') || 'local'
+  const key = createHash('sha256').update(salt).update('requests').update(ip).digest('base64url')
+  const now = Date.now()
+  const bucket = requestBuckets.get(key)
+  if (!bucket || bucket.resetAt < now) {
+    if (requestBuckets.size > 5000) requestBuckets.clear()
+    requestBuckets.set(key, { count: 1, resetAt: now + 60 * 60 * 1000 })
+    return true
+  }
+  bucket.count += 1
+  return bucket.count <= 120
+}
+
+setInterval(() => void purgeExpiredRequests(Date.now()).catch(() => {}), 5 * 60 * 1000).unref()
+
+app.post('/api/requests', async (c) => {
+  if (!allowRequestCreate(c.req.raw.headers)) return c.json({ error: 'Too many requests. Try again later.' }, 429)
+  let body: { ciphertext?: unknown }
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid JSON body.' }, 400)
+  }
+  const ciphertext = typeof body.ciphertext === 'string' ? body.ciphertext : ''
+  if (!/^[A-Za-z0-9_-]{40,4000}$/.test(ciphertext)) return c.json({ error: 'Invalid request data.' }, 400)
+  const id = randomBytes(16).toString('base64url')
+  const expiresAt = Date.now() + REQUEST_TTL_MS
+  try {
+    await createRequest(id, ciphertext, expiresAt)
+  } catch (error) {
+    console.error('[zac] could not save request:', error instanceof Error ? error.message : error)
+    return c.json({ error: 'The request could not be saved. Try again in a moment.' }, 503)
+  }
+  return c.json({ id, expiresAt }, 201)
+})
+
+app.get('/api/requests/:id', async (c) => {
+  const id = c.req.param('id')
+  if (!REQUEST_ID.test(id)) return c.json({ status: 'missing' }, 404)
+  const request = await getRequest(id).catch(() => null)
+  c.header('Cache-Control', 'no-store')
+  if (!request) return c.json({ status: 'missing' }, 404)
+  if (request.paidAt !== null) return c.json({ status: 'paid' }, 410)
+  if (request.expiresAt <= Date.now()) return c.json({ status: 'expired' }, 410)
+  return c.json({ status: 'open', ciphertext: request.ciphertext, expiresAt: request.expiresAt })
+})
+
+app.post('/api/requests/:id/paid', async (c) => {
+  const id = c.req.param('id')
+  if (!REQUEST_ID.test(id)) return c.json({ ok: false }, 404)
+  const ok = await markRequestPaid(id, Date.now()).catch(() => false)
+  return c.json({ ok }, ok ? 200 : 409)
+})
 
 app.get('/api/price', async (c) => {
   if (!price || Date.now() - price.fetchedAt > PRICE_TTL_MS) {

@@ -21,6 +21,7 @@ import { buildClaimMessage, normalizePubkey, verifyClaim } from '../claim'
 import { findOwnClaim } from '../../src/lib/directory'
 import { describeWalletError } from '../../src/lib/walletErrors'
 import { formatUsd, usdToZec, zecToUsd } from '../../src/lib/price'
+import { decryptRequest, encryptRequest, parseSealedToken } from '../../src/lib/sealedRequest'
 import {
   buildPaymentMemo,
   cleanMemo,
@@ -407,5 +408,27 @@ describe('USD estimates', () => {
     expect(formatUsd(8.098)).toBe('$8.10')
     expect(formatUsd(0.004)).toBe('< $0.01')
     expect(formatUsd(0)).toBe('$0.00')
+  })
+})
+
+describe('sealed payment requests', () => {
+  it('round-trips with the key and fails closed otherwise', async () => {
+    const payload = encodePaymentPayload({ v: 1, net: 'testnet', to: TESTNET_UA, h: 'alice', a: '0.25', m: 'rent', i: 'inv1', t: 0 })
+    const { ciphertext, key } = await encryptRequest(payload)
+    expect(ciphertext).not.toContain('alice')
+    expect(await decryptRequest(ciphertext, key)).toBe(payload)
+
+    const other = (await encryptRequest('x')).key
+    expect(await decryptRequest(ciphertext, other)).toBeNull()
+    const flipped = ciphertext.slice(0, 20) + (ciphertext[20] === 'A' ? 'B' : 'A') + ciphertext.slice(21)
+    expect(await decryptRequest(flipped, key)).toBeNull()
+  })
+
+  it('parses only well-formed link tokens', () => {
+    const id = 'a'.repeat(22)
+    const key = 'b'.repeat(43)
+    expect(parseSealedToken(`${id}.${key}`)).toEqual({ id, key })
+    expect(parseSealedToken(`${id}${key}`)).toBeNull()
+    expect(parseSealedToken(`${id}.short`)).toBeNull()
   })
 })

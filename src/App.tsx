@@ -9,6 +9,7 @@ import { PayPage } from './pages/Pay'
 import { PrivacyPage } from './pages/Privacy'
 import { ProfilePage } from './pages/Profile'
 import { ReceivePage } from './pages/Receive'
+import { SealedPayPage } from './pages/SealedPay'
 import { SendPage } from './pages/Send'
 import { SettingsPage } from './pages/Settings'
 
@@ -26,6 +27,7 @@ export default function App() {
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="privacy" element={<PrivacyPage />} />
                 <Route path="pay/:payload" element={<PayPage />} />
+                <Route path="r/:token" element={<SealedPayPage />} />
                 <Route path=":username" element={<ProfilePage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>

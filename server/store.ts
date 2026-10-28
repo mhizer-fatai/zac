@@ -131,6 +131,12 @@ async function loadFromPostgres(url: string): Promise<void> {
       updated_at bigint NOT NULL
     );
     CREATE TABLE IF NOT EXISTS zac_nonces (nonce text PRIMARY KEY);
+    CREATE TABLE IF NOT EXISTS zac_requests (
+      id         text PRIMARY KEY,
+      ciphertext text NOT NULL,
+      expires_at bigint NOT NULL,
+      paid_at    bigint
+    );
   `)
   const rows = await pool.query<{
     username: string
@@ -202,4 +208,64 @@ async function persistFile(): Promise<void> {
     }
   })
   return writeChain
+}
+
+/* ------------------------------------------------------------------ */
+/* Sealed payment requests                                             */
+/* Only ciphertext is stored: the browser encrypts the request and the */
+/* key stays in the link fragment, which never reaches the server.     */
+/* A request lives 30 minutes and is marked paid after one payment;    */
+/* expired rows are purged. No IP or other client data is stored.      */
+/* ------------------------------------------------------------------ */
+
+export interface StoredRequest {
+  ciphertext: string
+  expiresAt: number
+  paidAt: number | null
+}
+
+// Without Postgres (local development) requests live in memory only.
+const memoryRequests = new Map<string, StoredRequest>()
+
+export async function createRequest(id: string, ciphertext: string, expiresAt: number): Promise<void> {
+  if (pool) {
+    await pool.query('INSERT INTO zac_requests (id, ciphertext, expires_at) VALUES ($1, $2, $3)', [id, ciphertext, expiresAt])
+  } else {
+    memoryRequests.set(id, { ciphertext, expiresAt, paidAt: null })
+  }
+}
+
+export async function getRequest(id: string): Promise<StoredRequest | null> {
+  if (pool) {
+    const rows = await pool.query<{ ciphertext: string; expires_at: string; paid_at: string | null }>(
+      'SELECT ciphertext, expires_at, paid_at FROM zac_requests WHERE id = $1',
+      [id]
+    )
+    const row = rows.rows[0]
+    if (!row) return null
+    return { ciphertext: row.ciphertext, expiresAt: Number(row.expires_at), paidAt: row.paid_at === null ? null : Number(row.paid_at) }
+  }
+  return memoryRequests.get(id) ?? null
+}
+
+/** Marks a live request paid. Returns false if it is unknown, expired or already paid. */
+export async function markRequestPaid(id: string, now: number): Promise<boolean> {
+  if (pool) {
+    const result = await pool.query('UPDATE zac_requests SET paid_at = $2 WHERE id = $1 AND paid_at IS NULL AND expires_at > $2', [id, now])
+    return (result.rowCount ?? 0) > 0
+  }
+  const request = memoryRequests.get(id)
+  if (!request || request.paidAt !== null || request.expiresAt <= now) return false
+  request.paidAt = now
+  return true
+}
+
+export async function purgeExpiredRequests(now: number): Promise<void> {
+  if (pool) {
+    await pool.query('DELETE FROM zac_requests WHERE expires_at <= $1', [now])
+    return
+  }
+  for (const [id, request] of memoryRequests) {
+    if (request.expiresAt <= now) memoryRequests.delete(id)
+  }
 }

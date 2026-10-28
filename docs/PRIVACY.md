@@ -100,6 +100,24 @@ There are no link shorteners, no server-side link records, no preview fetches an
 beacons. The trade-off is that the link is long and that anyone who has the URL can read the amount
 and note. Use a private channel when sharing it.
 
+### Sealed links (default for Zac payment links)
+
+Payment links created in Zac are sealed. The browser encrypts the encoded request with a fresh
+random AES-256-GCM key and stores only the ciphertext on Zac’s server; the key goes in the link’s
+fragment (`/#/r/<id>.<key>`), which browsers never send. Opening the link fetches the ciphertext and
+decrypts it in the payer’s browser.
+
+- **One payment, 30 minutes.** After a successful payment the payer’s browser marks the request paid
+  (it sends only the request id, never a transaction id or amount), and the server refuses to serve
+  it again. Unpaid requests expire after 30 minutes and are purged. Old links in chats, backups or
+  browser history become dead pointers.
+- **What the server sees.** Ciphertext it cannot read, plus *when* a request is created, opened and
+  marked paid, from which network connection. A server that logged IPs could therefore tell that two
+  connections interacted, without knowing who, how much or why. Zac keeps no request logs and stores
+  no IPs (rate limiting uses salted hashes held in memory only).
+- **What it does not protect.** Anyone who has the full link before it is paid or expires can open
+  it. The “Any wallet” ZIP-321 QR is a standard, unsealed request so other wallets can read it.
+
 ## 4. Names and the directory
 
 Names are a public addressing layer. `@alice` maps to Alice's shielded address; this is public by

@@ -1,4 +1,5 @@
 import {
+  Smartphone,
   Clock,
   AlertTriangle,
   ArrowLeft,
@@ -29,9 +30,20 @@ import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
 import { useWalletData } from '../lib/useWalletData'
 import { describeWalletError } from '../lib/walletErrors'
+import { markSealedRequestPaid } from '../lib/sealedRequest'
 
-export function PayPage() {
-  const { payload: encoded } = useParams<{ payload: string }>()
+export function PayPage({
+  encodedPayload,
+  sealedToken,
+  expiresAt
+}: {
+  /** Set by SealedPayPage after decrypting a sealed request. */
+  encodedPayload?: string
+  sealedToken?: string
+  expiresAt?: number
+} = {}) {
+  const params = useParams<{ payload: string }>()
+  const encoded = encodedPayload ?? params.payload
   const { status, connection, connect, adapter } = useWallet()
   const { resolve, loading: directoryLoading } = useDirectory()
   const { balance, refresh: refreshWallet } = useWalletData(status === 'connected')
@@ -118,6 +130,8 @@ export function PayPage() {
       })
       const hash = await adapter.send({ to: payload.to, amount, memo })
       setTxid(hash)
+      // One payment per sealed link: tell the server so the link stops working.
+      if (sealedToken) void markSealedRequestPaid(sealedToken)
       await refreshWallet()
     } catch (cause) {
       const message = describeWalletError(cause, 'The payment did not go through.')
@@ -193,8 +207,9 @@ export function PayPage() {
         <section className="card pay-card">
           <div className="card-topline">
             <span className="chip chip-gold">
-              <ShieldCheck size={14} /> Private payment request
+              <ShieldCheck size={14} /> {sealedToken ? 'Sealed payment request' : 'Private payment request'}
             </span>
+            {expiresAt ? <span className="sealed-expiry">Expires {new Date(expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span> : null}
             <NetworkBadge network={payload.net} />
           </div>
 
@@ -367,13 +382,16 @@ export function PayPage() {
           <p className="eyebrow">Any wallet</p>
           <h2>Pay from another wallet</h2>
           <p className="muted small">
-            Scan this ZIP-321 request with Zashi, Zodl, Zingo!, Ywallet or any wallet that supports shielded
-            payments.
+            On a phone, open it in your wallet app. On a computer, scan the code with Zodl, Zingo!, Ywallet or any
+            wallet that supports shielded payments.
           </p>
           <Qr value={zipUri} size={190} />
           <div className="pay-side-code">
             <code>{zipUri}</code>
           </div>
+          <a className="btn btn-primary btn-block" href={zipUri}>
+            <Smartphone size={16} /> Open in wallet app
+          </a>
           <div className="pay-side-actions">
             <CopyButton value={zipUri} label="Copy URI" />
             <CopyButton value={payload.to} label="Copy address" />
