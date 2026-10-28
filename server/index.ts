@@ -15,6 +15,7 @@ import {
   listClaims,
   loadStore,
   storeUpdatedAt,
+  storageKind,
   upsertClaim
 } from './store'
 import { verifySignedMessage } from './verify'
@@ -174,7 +175,13 @@ app.post('/api/claims', async (c) => {
     updatedAt: 0
   }
 
-  const result = await upsertClaim(claim, nonce)
+  let result: Awaited<ReturnType<typeof upsertClaim>>
+  try {
+    result = await upsertClaim(claim, nonce)
+  } catch (error) {
+    console.error('[zac] could not save claim:', error instanceof Error ? error.message : error)
+    return c.json({ error: 'The name could not be saved. Try again in a moment.' }, 503)
+  }
   const stored = getClaim(username)
   return c.json({ claim: stored, result }, result === 'created' ? 201 : 200)
 })
@@ -201,7 +208,7 @@ serve(
   },
   (info) => {
     const claims = listClaims().length
-    console.log(`[zac] api listening on http://localhost:${info.port} · ${claims} claim${claims === 1 ? '' : 's'}`)
+    console.log(`[zac] api listening on http://localhost:${info.port} · ${claims} claim${claims === 1 ? '' : 's'} · ${storageKind()} storage`)
     if (!existsSync(path.join(distDir, 'index.html'))) {
       console.log('[zac] no dist/ build found — run the Vite dev server for the UI')
     }

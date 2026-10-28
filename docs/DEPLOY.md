@@ -116,6 +116,23 @@ Caddy writes no access log (there is no `log` directive), and the API logs one s
 
 ---
 
+## Alternative — the API on Render (free) with a Neon database
+
+The live deployment uses this instead of a VPS. Render's free plan has no persistent disk, so
+claims are stored in a free Neon Postgres database (set `DATABASE_URL`; the API creates its two
+tables on first start).
+
+1. Neon: create a project and copy its connection string (`postgresql://…?sslmode=require`).
+2. Render: **New → Web Service** → this repo, then:
+   - Build command: `npm ci` · Start command: `npm start` · Instance type: Free
+   - Environment: `NODE_VERSION=24`, `DATABASE_URL=<the Neon connection string>`
+3. The log should show `… · postgres storage`. Point Netlify's `ZAC_API_ORIGIN` at the service URL.
+
+Free Render services sleep after 15 minutes idle; the first request then takes about a minute.
+A free uptime monitor that requests `/api/health` every 10 minutes keeps it awake.
+
+---
+
 ## Updating
 
 On the VPS:
