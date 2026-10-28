@@ -92,16 +92,22 @@ app.get('/api/health', (c) => {
   return c.json({
     ok: true,
     claims: listClaims().length,
-    updatedAt: storeUpdatedAt(),
+    updatedAt: toDay(storeUpdatedAt()),
     uptimeSeconds: Math.round((Date.now() - startedAt) / 1000)
   })
 })
 
+const DAY_MS = 24 * 60 * 60 * 1000
+const toDay = (ms: number) => ms - (ms % DAY_MS)
+
 app.get('/api/directory', (c) => {
+  // Timestamps are rounded down to the day in public output so they cannot be
+  // matched to request times in hosting logs. They are not part of the signed
+  // claim message, so verification is unaffected.
   const snapshot: DirectorySnapshot = {
     version: 1,
-    updatedAt: storeUpdatedAt(),
-    claims: listClaims()
+    updatedAt: toDay(storeUpdatedAt()),
+    claims: listClaims().map((claim) => ({ ...claim, createdAt: toDay(claim.createdAt), updatedAt: toDay(claim.updatedAt) }))
   }
   const json = JSON.stringify(snapshot)
   const etag = `"${createHash('sha256').update(json).digest('hex').slice(0, 32)}"`
@@ -183,7 +189,8 @@ app.post('/api/claims', async (c) => {
   try {
     result = await upsertClaim(claim, nonce)
   } catch (error) {
-    console.error('[zac] could not save claim:', error instanceof Error ? error.message : error)
+    // Log only the error code: database messages can contain submitted values.
+    console.error('[zac] could not save claim:', (error as { code?: string }).code ?? 'unknown error')
     return c.json({ error: 'The name could not be saved. Try again in a moment.' }, 503)
   }
   const stored = getClaim(username)
@@ -257,7 +264,7 @@ app.post('/api/requests', async (c) => {
   try {
     await createRequest(id, ciphertext, expiresAt)
   } catch (error) {
-    console.error('[zac] could not save request:', error instanceof Error ? error.message : error)
+    console.error('[zac] could not save request:', (error as { code?: string }).code ?? 'unknown error')
     return c.json({ error: 'The request could not be saved. Try again in a moment.' }, 503)
   }
   return c.json({ id, expiresAt }, 201)

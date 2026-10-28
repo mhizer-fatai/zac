@@ -46,7 +46,7 @@ export function RevealNameToggle({
         <strong>{reveal ? `Sign the receipt as @${handle}` : 'Pay without your name'}</strong>
         <small>
           {reveal
-            ? 'The recipient sees who paid. Only they can decrypt it.'
+            ? 'Only the recipient can decrypt it. A signed receipt proves you paid, and they can show it to others.'
             : 'The receipt carries no sender. Tick to include your @name.'}
         </small>
       </span>

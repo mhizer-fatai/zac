@@ -30,7 +30,7 @@ import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
 import { useWalletData } from '../lib/useWalletData'
 import { describeWalletError } from '../lib/walletErrors'
-import { markSealedRequestPaid } from '../lib/sealedRequest'
+import { schedulePaid } from '../lib/sealedRequest'
 
 export function PayPage({
   encodedPayload,
@@ -142,7 +142,7 @@ export function PayPage({
       const hash = await adapter.send({ to: payload.to, amount, memo })
       setTxid(hash)
       // One payment per sealed link: tell the server so the link stops working.
-      if (sealedToken) void markSealedRequestPaid(sealedToken)
+      if (sealedToken) schedulePaid(sealedToken)
       await refreshWallet()
     } catch (cause) {
       const message = describeWalletError(cause, 'The payment did not go through.')

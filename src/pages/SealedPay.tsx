@@ -1,7 +1,7 @@
 import { Clock, Lock, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { openSealedRequest, type SealedLookup } from '../lib/sealedRequest'
+import { openSealedRequest, paidInThisBrowser, type SealedLookup } from '../lib/sealedRequest'
 import { Spinner } from '../components/Spinner'
 import { PayPage } from './Pay'
 
@@ -24,6 +24,10 @@ export function SealedPayPage() {
   useEffect(() => {
     let active = true
     setLookup(null)
+    if (paidInThisBrowser(token)) {
+      setLookup({ status: 'paid' })
+      return
+    }
     openSealedRequest(token)
       .then((result) => active && setLookup(result))
       .catch(() => active && setLookup({ status: 'missing' }))

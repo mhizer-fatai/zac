@@ -99,3 +99,41 @@ export async function markSealedRequestPaid(token: string): Promise<void> {
   if (!parsed) return
   await fetch(`${API_BASE}/api/requests/${parsed.id}/paid`, { method: 'POST', credentials: 'omit' }).catch(() => {})
 }
+
+const PAID_KEY = 'zac.paidRequests.v1'
+
+function readPaid(): string[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(PAID_KEY) ?? '[]')
+    return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/** True if this browser already paid the request (shown before the server knows). */
+export function paidInThisBrowser(token: string): boolean {
+  const parsed = parseSealedToken(token)
+  return Boolean(parsed && readPaid().includes(parsed.id))
+}
+
+/**
+ * Record a payment for a sealed request. The server is told after a random
+ * 1-3 minute delay so the "paid" call cannot be matched to the exact
+ * broadcast time of a shielded transaction; meanwhile this browser remembers
+ * it so the same payer cannot pay twice by reopening the link. If the tab is
+ * closed before the delay ends, the link simply dies at its 30-minute expiry.
+ */
+export function schedulePaid(token: string): void {
+  const parsed = parseSealedToken(token)
+  if (!parsed) return
+  try {
+    localStorage.setItem(PAID_KEY, JSON.stringify([parsed.id, ...readPaid().filter((id) => id !== parsed.id)].slice(0, 50)))
+  } catch {
+    /* storage may be unavailable */
+  }
+  const jitter = new Uint32Array(1)
+  crypto.getRandomValues(jitter)
+  const delayMs = 60_000 + (jitter[0] % 120_000)
+  window.setTimeout(() => void markSealedRequestPaid(token), delayMs)
+}

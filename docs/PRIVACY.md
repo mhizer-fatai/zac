@@ -72,6 +72,10 @@ else. The note is committed by hash so the signed text is pure ASCII (the Noir S
 envelope counts UTF-16 code units, not bytes, for its length prefix). Revealing costs one extra
 wallet approval; anonymous payments need none.
 
+A signed receipt is **transferable proof**: anyone who is shown the memo can verify that @name paid
+this recipient with this note, and the payer cannot deny it. That is what makes it trustworthy, and
+it is why signing is opt-in; the app says so next to the checkbox.
+
 ## 3. Payment links
 
 A Zac request link looks like:
@@ -111,6 +115,10 @@ decrypts it in the payer’s browser.
   (it sends only the request id, never a transaction id or amount), and the server refuses to serve
   it again. Unpaid requests expire after 30 minutes and are purged. Old links in chats, backups or
   browser history become dead pointers.
+- **No payment timing.** The "paid" call is sent after a random 1–3 minute delay, so it cannot be
+  matched to the broadcast time of a shielded transaction on-chain. The payer's browser remembers the
+  payment locally in the meantime so the same link cannot be paid twice from it; if the tab closes
+  first, the link simply dies at its 30-minute expiry.
 - **What the server sees.** Ciphertext it cannot read, plus *when* a request is created, opened and
   marked paid, from which network connection. A server that logged IPs could therefore tell that two
   connections interacted, without knowing who, how much or why. Zac keeps no request logs and stores
@@ -184,7 +192,13 @@ Other operational facts:
   ZEC amount is shown before the wallet asks for approval.
 - **No request logging.** The Node process prints one startup line; Hono has no logger installed.
 - **Rate limiting** is an in-memory map keyed by a salted hash of the connection IP. The salt is
-  generated per process; raw IPs are never written to disk.
+  generated per process; raw IPs are never written to disk. Known limitation: the limiter reads the
+  first `X-Forwarded-For` entry, which a client can set, so the limits are best-effort against spam.
+  This affects abuse resistance, not privacy.
+- **Public timestamps are rounded to the day.** The directory and health endpoint publish claim and
+  update times rounded down to the day, so they cannot be matched to request times in hosting logs.
+- **Server logs carry no user data.** Database failures are logged by error code only, because
+  database messages can echo submitted values.
 - **A strict Content-Security-Policy** makes "no third-party requests" a rule the browser enforces,
   not a promise: `default-src 'none'` with only `'self'` allowed for scripts, styles, images, fonts
   and `connect-src`. Even injected or compromised code in the page cannot fetch, beacon or load
@@ -220,11 +234,19 @@ extension, its sync servers and its analytics settings. Zac does not control the
 - **The sharing channel.** A link is readable by whoever holds it: a chat app, email provider, clipboard
   manager or shoulder-surfer. The fragment protects you from our server and from link previews, not
   from the messenger.
-- **The static host.** The public deployment serves the app from Netlify and proxies `/api/*` through
-  it to the Zac API (see `docs/DEPLOY.md`). Netlify can therefore see page loads and the two kinds of
-  API request — the directory download and name claims — with your IP and time, under Netlify's own
-  logging policy. It cannot see payment links (fragments are never sent) or payments. Self-host the
-  static files to remove this party.
+- **Hosting providers.** The public deployment involves four infrastructure companies (see
+  `docs/DEPLOY.md`). None of them can read payments, notes, amounts or request contents; all of them
+  can see some network metadata under their own logging policies:
+
+  | Provider | Role | Can see |
+  | --- | --- | --- |
+  | Netlify | Serves the app; proxies `/api/*` | Page loads and every API call (directory, claims, price, sealed-request create/open/paid), with IP and time |
+  | Cloudflare | Network edge in front of Render | The same API calls, with the client IP forwarded by Netlify, and time |
+  | Render | Runs the API | The same API calls, with forwarded IP and time; the process itself logs no requests |
+  | Neon | Postgres database | Stored rows: public name claims, used nonces, and sealed-request ciphertext with expiry/paid times. Its backups may keep deleted ciphertext briefly; without the key from the link it is unreadable |
+
+  The fragment of a link (request data, sealed-link keys) is never sent to any of them. Self-hosting
+  the static files and the API (see `docs/DEPLOY.md`, VPS option) removes all four.
 - **Network observers.** Zac does not add Tor, a VPN or a mixnet. Your ISP/hosting provider can see that
   you use a Zcash app and when.
 - **Address reuse.** A name points to one shielded address. Address reuse is normal for a phone-book
