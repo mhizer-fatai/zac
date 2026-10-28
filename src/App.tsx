@@ -3,7 +3,6 @@ import { Layout } from './components/Layout'
 import { DirectoryProvider } from './lib/directory'
 import { ToastProvider } from './lib/toast'
 import { WalletProvider } from './lib/walletContext'
-import { CheckoutPage } from './pages/Checkout'
 import { Home } from './pages/Home'
 import { NotFoundPage } from './pages/NotFound'
 import { PayPage } from './pages/Pay'
@@ -24,7 +23,6 @@ export default function App() {
                 <Route index element={<Home />} />
                 <Route path="send" element={<SendPage />} />
                 <Route path="receive" element={<ReceivePage />} />
-                <Route path="checkout" element={<CheckoutPage />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="privacy" element={<PrivacyPage />} />
                 <Route path="pay/:payload" element={<PayPage />} />

@@ -21,8 +21,6 @@ import { buildClaimMessage, normalizePubkey, verifyClaim } from '../claim'
 import { findOwnClaim } from '../../src/lib/directory'
 import { describeWalletError } from '../../src/lib/walletErrors'
 import { formatUsd, usdToZec, zecToUsd } from '../../src/lib/price'
-import { findCheckoutPayment } from '../../src/lib/checkout'
-import type { WalletTx } from '../../src/lib/wallet'
 import {
   buildPaymentMemo,
   cleanMemo,
@@ -409,34 +407,5 @@ describe('USD estimates', () => {
     expect(formatUsd(8.098)).toBe('$8.10')
     expect(formatUsd(0.004)).toBe('< $0.01')
     expect(formatUsd(0)).toBe('$0.00')
-  })
-})
-
-describe('checkout detection', () => {
-  const tx = (over: Partial<WalletTx>): WalletTx => ({
-    txid: 't1', type: 'receive', amount: '0.0035', status: 'pending', timestamp: 0, memo: 'zac1|inv42|-|flat white', ...over
-  })
-  const requested = zecToZatoshi('0.0035')
-
-  it('matches the sale by the invoice id in the memo', () => {
-    expect(findCheckoutPayment([tx({})], 'inv42', requested)).toMatchObject({ status: 'paid' })
-    expect(findCheckoutPayment([tx({ memo: 'zac2|inv42|@bob|sig|flat white' })], 'inv42', requested)).toMatchObject({ status: 'paid' })
-  })
-
-  it('ignores other invoices, outgoing payments and memo-less payments', () => {
-    expect(findCheckoutPayment([tx({ memo: 'zac1|other|-|x' })], 'inv42', requested)).toBeNull()
-    expect(findCheckoutPayment([tx({ type: 'send' })], 'inv42', requested)).toBeNull()
-    expect(findCheckoutPayment([tx({ memo: undefined })], 'inv42', requested)).toBeNull()
-  })
-
-  it('flags an underpayment', () => {
-    expect(findCheckoutPayment([tx({ amount: '0.001' })], 'inv42', requested)).toMatchObject({ status: 'underpaid' })
-  })
-
-  it('puts the invoice id in the ZIP-321 memo any wallet will send', () => {
-    const uri = buildZip321Uri({ v: 1, net: 'testnet', to: TESTNET_UA, a: '0.0035', m: buildPaymentMemo({ invoiceId: 'inv42', note: 'flat white' }), i: 'inv42', t: 0 })
-    const memo = new URL(uri.replace('zcash:', 'zcash://x/')).searchParams.get('memo')!
-    const decoded = new TextDecoder().decode(Uint8Array.from(atob(memo.replace(/-/g, '+').replace(/_/g, '/') + '=='.slice(0, (4 - (memo.length % 4)) % 4)), (c) => c.charCodeAt(0)))
-    expect(parsePaymentMemo(decoded)?.invoiceId).toBe('inv42')
   })
 })
