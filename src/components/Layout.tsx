@@ -14,6 +14,7 @@ const SOURCE_URL = (import.meta.env.VITE_SOURCE_URL as string | undefined) ?? ''
 
 const landingSections = [
   { id: 'how', label: 'How it works' },
+  { id: 'features', label: 'Features' },
   { id: 'privacy', label: 'Privacy' },
   { id: 'verify', label: 'Verify it' }
 ]

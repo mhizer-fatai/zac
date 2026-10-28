@@ -243,8 +243,8 @@ export function Home() {
             by name.
           </h1>
           <p className="lp-sub">
-            Zac turns a shielded Zcash address into a simple @name and a shareable payment link. Amounts, notes
-            and counterparties stay between sender and recipient.
+            Zac turns a shielded Zcash address into a simple @name, sealed payment links and bill splits. Amounts,
+            notes and counterparties stay between sender and recipient.
           </p>
           <div className="lp-actions">
             <button type="button" className="btn btn-primary btn-lg" onClick={handleClaim}>
@@ -333,9 +333,9 @@ export function Home() {
               <span className="step-number">02</span>
               <span className="lp-step-icon"><Link2 size={18} /></span>
             </div>
-            <h3>Share a request</h3>
-            <p>Set an amount and an optional note, then share the link or QR code anywhere.</p>
-            <span className="lp-step-foot">Details stay in the URL fragment</span>
+            <h3>Request or split</h3>
+            <p>Ask for an amount in ZEC or dollars with a sealed link, or split a bill so everyone gets their own.</p>
+            <span className="lp-step-foot">Encrypted in your browser · one payment</span>
           </article>
           <article className="lp-step">
             <div className="lp-step-top">
@@ -343,8 +343,47 @@ export function Home() {
               <span className="lp-step-icon"><ShieldCheck size={18} /></span>
             </div>
             <h3>Get paid</h3>
-            <p>The payer confirms in their wallet. Funds arrive shielded, with an encrypted receipt.</p>
+            <p>Payers use Noir or any shielded phone wallet. Funds arrive shielded, with an encrypted receipt.</p>
             <span className="lp-step-foot">Shielded transaction · encrypted memo</span>
+          </article>
+        </div>
+      </section>
+
+      <section className="lp-section" id="features">
+        <p className="lp-eyebrow reveal">Built for sending money home</p>
+        <h2 className="reveal">Everyday payments, without the paper trail.</h2>
+        <div className="lp-verify reveal-stagger">
+          <article className="lp-verify-card">
+            <div className="lp-verify-head">
+              <h3>Send by name, in dollars</h3>
+              <Send size={18} />
+            </div>
+            <p>Type @name and an amount in USD. Zac sends the exact ZEC, shielded, and shows it before you approve.</p>
+            <code className="lp-code">$50.00 → 0.0389 ZEC <span className="muted-2">· shielded</span></code>
+          </article>
+          <article className="lp-verify-card">
+            <div className="lp-verify-head">
+              <h3>Sealed request links</h3>
+              <Lock size={18} />
+            </div>
+            <p>
+              The request is encrypted in your browser. It opens for one payment within 30 minutes, then the link
+              stops working.
+            </p>
+            <code className="lp-code">one payment · 30 min <span className="muted-2">· then dead</span></code>
+          </article>
+          <article className="lp-verify-card">
+            <div className="lp-verify-head">
+              <h3>Split a bill</h3>
+              <Users size={18} />
+            </div>
+            <p>
+              Everyone gets their own sealed link for their share, and you see who has paid. Names never leave your
+              device.
+            </p>
+            <code className="lp-code">
+              Maya <span className="tone-success">✓ paid</span> · Noah <span className="muted-2">pending</span>
+            </code>
           </article>
         </div>
       </section>
@@ -393,11 +432,14 @@ export function Home() {
         <div className="lp-verify reveal-stagger">
           <article className="lp-verify-card">
             <div className="lp-verify-head">
-              <h3>Links stay local</h3>
+              <h3>Sealed links</h3>
               <SquareTerminal size={18} />
             </div>
-            <p>Payment details never appear in a network request. Check it in your browser's developer tools.</p>
-            <code className="lp-code">#/pay/eyJ0byI6… <span className="muted-2">→ never sent</span></code>
+            <p>
+              Requests are encrypted in your browser and the key sits after the #, which is never sent. Check it in
+              your browser's developer tools.
+            </p>
+            <code className="lp-code">#/r/&lt;id&gt;.&lt;key&gt; <span className="muted-2">→ key never sent</span></code>
           </article>
           <article className="lp-verify-card">
             <div className="lp-verify-head">
@@ -462,7 +504,7 @@ export function Home() {
           {status === 'unavailable' ? 'Set up Noir Wallet' : 'Claim your name'}
         </button>
         <p className="lp-mono-sub">
-          Requires Noir Wallet. Any shielded Zcash wallet can pay a request by QR code.
+          Requires Noir Wallet to send. Anyone with a shielded Zcash wallet can pay your links.
         </p>
       </section>
 
@@ -483,6 +525,7 @@ const VISIBILITY: Array<{ label: string; chain: Visibility; server: Visibility; 
   { label: 'Note and receipt', chain: 'hidden', server: 'hidden', parties: 'visible' },
   { label: 'Name lookups', chain: 'hidden', server: 'hidden', parties: 'only-you' },
   { label: 'Payment link contents', chain: 'hidden', server: 'hidden', parties: 'link-holders' },
+  { label: 'Who has paid your split', chain: 'hidden', server: 'hidden', parties: 'only-you' },
   { label: 'Transaction existence, fee and time', chain: 'visible', server: 'hidden', parties: 'visible' },
   { label: 'Your @name and address', chain: 'hidden', server: 'public', parties: 'public' }
 ]
