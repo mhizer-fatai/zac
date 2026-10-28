@@ -195,6 +195,10 @@ export function ClaimModal({
             <Lock size={14} />
             <span>Signing is free. No transaction is sent, and no fee is paid.</span>
           </div>
+          <p className="field-hint claim-link-warning">
+            Names claimed from the same wallet share a public signing key, so anyone can tell they belong
+            together. Use a separate wallet for a separate identity.
+          </p>
           <button
             type="submit"
             className="btn btn-primary btn-block"

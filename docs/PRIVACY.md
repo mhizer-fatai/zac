@@ -52,7 +52,8 @@ The recipient's wallet decrypts it with its incoming viewing key. It is not publ
 wallet stores the outgoing memo locally.
 
 **Anonymous by default.** A receipt carries no sender unless the payer ticks "Sign the receipt as
-@name". The choice is remembered only in that browser.
+@name". The choice is not remembered: every payment starts anonymous, so signing once never
+silently identifies the payer on a later payment.
 
 **Signed sender names.** A name typed into a memo proves nothing — anyone can write `@alice`. When
 the payer reveals their name, their wallet signs
@@ -249,6 +250,10 @@ extension, its sync servers and its analytics settings. Zac does not control the
   the static files and the API (see `docs/DEPLOY.md`, VPS option) removes all four.
 - **Network observers.** Zac does not add Tor, a VPN or a mixnet. Your ISP/hosting provider can see that
   you use a Zcash app and when.
+- **Names from one wallet are linkable.** Claims are signed with the wallet's derived key, and Noir
+  exposes one such key per wallet, so every name claimed from the same wallet carries the same public
+  key in the directory. Anyone can tell those names belong together. The claim screen says so; use a
+  separate wallet for a separate identity.
 - **Address reuse.** A name points to one shielded address. Address reuse is normal for a phone-book
   entry, but it creates linkability edges if that address is ever connected to an identity elsewhere.
   A fresh wallet account per identity gives stronger separation.

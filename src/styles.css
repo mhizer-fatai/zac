@@ -1635,3 +1635,4 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
 }
 .sealed-card h1 { font-size: 28px; }
 .sealed-expiry.is-expired { color: var(--red); }
+.claim-link-warning { margin: -4px 0 12px; line-height: 1.5; }

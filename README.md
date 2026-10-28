@@ -1,51 +1,75 @@
 # Zac
 
 > **Private payments, by name.**
-> Claim `@you`, share a link, send shielded ZEC. No accounts, no analytics, no payment graph.
+> Claim `@you`, send a sealed payment link, get paid in shielded ZEC. No accounts, no analytics, no payment graph on-chain or in Zac's database.
 
-Zac is a non-custodial Zcash payments app built for **ZECATHON 2026 — Track 01, Shielded Payments**.
-It turns a shielded Zcash address into a human name and a shareable payment request, while keeping the
-payment itself private on-chain and invisible to the app's server.
+Zac is a non-custodial Zcash payments app built for **ZECATHON 2026 — Track 01, Shielded Payments**,
+focused on **remittance and person-to-person payments**. It turns a shielded Zcash address into a
+human name and a one-time payment link, while keeping the payment private on-chain and the request
+unreadable to everyone but the people involved, including Zac's own server.
 
-- **Live demo:** _coming soon_
+- **Live app:** <https://zacpay.netlify.app>
 - **Demo video:** _coming soon_
-- **Privacy model:** [`docs/PRIVACY.md`](docs/PRIVACY.md)
-- **Architecture:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- **Privacy model:** [`docs/PRIVACY.md`](docs/PRIVACY.md) · **Architecture:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · **Deploy:** [`docs/DEPLOY.md`](docs/DEPLOY.md)
+
+**Verified end to end on Zcash mainnet:** claim a name, send to `@name` with the amount entered in
+USD through Noir Wallet, and the recipient sees the confirmed shielded payment as "From @name ✓
+verified".
 
 ## What it does
 
 - **Claim a name.** `@alice` is a public pointer to your shielded unified address. Claiming signs one
-  free message with your wallet — no transaction, no fee.
-- **Send by name.** Type `@alice` or paste a shielded address. Zac resolves names locally and sends a
-  shielded payment through Noir Wallet.
-- **Share a private request.** Create `https://…/#/pay/<payload>` for a fixed or open amount. The
-  recipient, amount and note live in the **URL fragment**, which browsers never send to a server.
-- **Encrypted receipts.** Every Zac payment carries a structured memo (`zac1|invoice|@sender|note`)
-  inside the shielded output. Only the sender and recipient can decrypt it.
-- **Pay from any wallet.** Each request also renders a standard **ZIP-321** `zcash:` URI and QR code,
-  so Zashi, Zodl, Zingo!, Ywallet and other shielded wallets can pay without installing Zac.
+  free message with your wallet: no transaction, no fee.
+- **Send by name.** Type `@alice` or paste a shielded address, enter the amount in **ZEC or USD**, and
+  send a shielded payment through Noir Wallet. The exact ZEC amount is always shown before approval.
+- **Sealed payment links.** Ask for money with a link like `https://zacpay.netlify.app/#/r/<id>.<key>`.
+  The request (who to pay, how much, why) is **encrypted in your browser**; Zac stores only ciphertext
+  and the key never leaves the link. Each link works for **one payment within 30 minutes**, then dies.
+- **Pay from any wallet.** Opening a link shows who you are paying (with a verified name), the amount
+  and the note. Pay with Noir in the browser, or tap **Open in wallet app** / scan the ZIP-321 QR to
+  pay from Zodl, Zingo!, Ywallet or any shielded wallet.
+- **Anonymous by default, verifiable on request.** Every payment carries an encrypted receipt memo.
+  By default it has no sender. If the payer chooses, their wallet signs it, and the recipient sees
+  **"From @name ✓ verified"**, which nobody else can fake.
+- **Receive.** One screen with your address QR and a **Request payment** menu for sealed links,
+  your profile link or a plain `zcash:` URI.
 
-## Privacy in one breath
+## How it stays private
 
-Zac never touches funds or keys. Payments are shielded Zcash transactions; there is no transparent
-fallback. The server stores only public, wallet-signed name records — never amounts, memos, senders,
-recipients or payment links. The name directory is fetched as one snapshot and resolved in the browser,
-so the server does not learn which name you looked up. There are no cookies, analytics, third-party
-scripts, external fonts or request logs.
+| | Public chain | Zac's server | Sender & recipient |
+| --- | --- | --- | --- |
+| Who paid whom | Hidden | Hidden | Payer decides |
+| Amount, note, receipt | Hidden | Hidden | Visible |
+| Which `@name` you looked up | Hidden | Hidden | Only you |
+| Payment request contents | Hidden | **Ciphertext only** | Link holders (one payment, 30 min) |
+| That a shielded transaction happened, its fee and time | Visible | Hidden | Visible |
+| Your `@name` and address | Hidden | Public (phone book) | Public |
 
-The app is deliberately honest about the edges: light wallets reveal some metadata to their sync server,
-the channel you share a link through can read it, and shielding is not anonymity against a global
-network observer. See [`docs/PRIVACY.md`](docs/PRIVACY.md) for the full model.
+How each guarantee is enforced:
+
+- **Shielded only.** Every send uses shielded funding. Unified addresses are fully decoded (ZIP-316,
+  tested against the official vectors) and any transparent receiver is stripped or refused, so no
+  wallet can fall back to a public payment.
+- **Server-blind lookups.** The directory is downloaded as one snapshot and searched in the browser.
+- **Server can't forge names.** Every record is wallet-signed and re-verified in the browser.
+- **Sealed links.** AES-256-GCM in the browser; key in the URL fragment, which browsers never send.
+  The "paid" signal is delayed randomly so it can't be matched to a transaction's broadcast time.
+- **No third parties in the browser.** A strict Content-Security-Policy (`default-src 'none'`,
+  `connect-src 'self'`) blocks every external request. Even the ZEC/USD price comes through Zac's
+  server, so the price source never sees users.
+- **No cookies, analytics or request logs.**
+
+What Zac cannot protect is written down too: hosting providers see network metadata (listed by name
+in the privacy model), light wallets reveal timing to their sync server, and anyone holding a live
+link can open it. See [`docs/PRIVACY.md`](docs/PRIVACY.md).
 
 ## Stack
 
-- **Frontend:** React 19 + TypeScript + Vite, hash-based routing, one self-hosted font, no external
-  requests.
-- **Wallet:** [Noir Wallet](https://zknoir.com) via `@noir-wallet/sdk` — a self-custodial Chrome
-  extension with mainnet and testnet builds.
-- **API:** Hono on Node, a small JSON store for signed name records.
-- **Crypto:** Zcash signed-message verification (secp256k1 + double SHA-256) shared by client and
-  server; Zcash shielded memos; ZIP-316 unified addresses; ZIP-321 payment URIs; ZIP-317 fees.
+- **Frontend:** React 19 + TypeScript + Vite, hash routing, self-hosted fonts, no external requests.
+- **Wallet:** [Noir Wallet](https://zknoir.com) via `@noir-wallet/sdk` (self-custodial browser extension).
+- **API:** Hono on Node. Postgres (e.g. Neon) when `DATABASE_URL` is set, otherwise a JSON file.
+- **Crypto:** ZIP-316 decoding (Bech32m, F4Jumble), Zcash signed messages (secp256k1), WebCrypto
+  AES-256-GCM for sealed links, ZIP-321 payment URIs, ZIP-317 fees (computed by the wallet).
 
 ## Run it locally
 
@@ -56,21 +80,10 @@ npm install
 npm run dev
 ```
 
-- UI: <http://localhost:5173>
+- UI: <http://localhost:5173> (proxies `/api` to the API)
 - API: <http://localhost:8787>
 
-The Vite dev server proxies `/api` to the API server. The first `npm run dev` starts both processes.
-
-### Production build
-
-```bash
-npm run build
-npm start
-```
-
-`npm start` serves the built SPA and the API from a single Node process on port **8787**. Set `PORT`
-and `ZAC_DATA_DIR` to taste. The JSON store is intentionally simple; for a public deployment use a
-persistent disk or replace `server/store.ts` with a database.
+Without `DATABASE_URL`, names are kept in `server/data/claims.json` and sealed requests in memory.
 
 ### Tests
 
@@ -78,86 +91,76 @@ persistent disk or replace `server/store.ts` with a database.
 npm test
 ```
 
-Covers amount arithmetic (no floating point), memo encoding/truncation, payment-link validation,
-username rules, address classification and the claim signature format.
+33 tests: exact zatoshi arithmetic, memo encoding, payment-link validation, username rules,
+ZIP-316/F4Jumble against the official test vectors, directory forgery attempts, signed receipts
+(replay, tampering, blank keys), sealed-link encryption (wrong key, tampering), USD conversion and
+wallet error messages.
 
-## Noir Wallet setup
+## Deployment
 
-Zac needs the **Noir Wallet** browser extension. It is self-custodial: the seed and keys never leave
-the extension.
+The live app runs as **Netlify** (static app, proxying `/api/*`) + **Render** (API) + **Neon**
+(Postgres). A self-hosted VPS setup (systemd + Caddy) is also documented. Step by step:
+[`docs/DEPLOY.md`](docs/DEPLOY.md).
 
-- **Mainnet:** install from the [Chrome Web Store](https://chromewebstore.google.com/detail/noir-wallet/mfoghjbpfanobmnoemoepenjjcmfpmdn).
-- **Testnet:** download the official `*-testnet.zip` from
-  [GitHub Releases](https://github.com/NoirWallet/noir-wallet-sdk/releases), unzip it, open
-  `chrome://extensions`, enable Developer mode and **Load unpacked**.
-- Create or restore a wallet and back up the recovery phrase offline.
+| Variable | Where | Meaning |
+| --- | --- | --- |
+| `ZAC_API_ORIGIN` | Netlify | API origin that `/api/*` is proxied to (e.g. `https://zac-api.onrender.com`) |
+| `VITE_SOURCE_URL` | Netlify | Optional link to this repository |
+| `DATABASE_URL` | API | Postgres connection string; tables are created on start |
+| `PORT`, `HOST` | API | Listen address (default `0.0.0.0:8787`) |
+| `ZAC_DATA_DIR` | API | Directory for the JSON store when no database is set |
 
-Never install a Noir build from a third-party mirror, and never give Zac (or anyone) your seed phrase.
-Zac cannot recover it.
+## API
 
-### Testnet walkthrough
+Small on purpose. Nothing here ever receives an address you are paying, an amount, a note or a
+transaction id.
 
-See [`docs/TESTNET.md`](docs/TESTNET.md). In short:
-
-1. Install the testnet build and create a wallet.
-2. Copy the shielded address and request TAZ from a faucet
-   ([Valar](https://faucet.testnet.valargroup.dev/) or [Fauzec](https://fauzec.com/)).
-3. Open Zac, connect, claim a name, create a link and pay it from a second wallet.
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/directory` | Full snapshot of wallet-signed name records (no per-name lookup exists) |
+| `POST` | `/api/claims` | Publish a signed name claim |
+| `POST` | `/api/requests` | Store a sealed request's **ciphertext** for 30 minutes |
+| `GET` | `/api/requests/:id` | Fetch that ciphertext, or `paid` / `expired` |
+| `POST` | `/api/requests/:id/paid` | Mark a sealed request used (request id only) |
+| `GET` | `/api/price` | Cached ZEC/USD price (fetched server-side) |
+| `GET` | `/api/health` | Liveness |
 
 ## Project layout
 
 ```
-src/                 React app
-  components/        Layout, claim modal, QR, copy/share, tx rows
-  lib/               Noir Wallet adapter, directory, links, API
-  pages/             Home, Send, Receive, Pay, Profile, Settings, Privacy
-shared/              Code used by both client and server
-  address.ts         Shielded/transparent/network classification
-  amount.ts          Exact zatoshi arithmetic
-  claim.ts           Canonical signed claim message
-  memo.ts            Structured encrypted receipt memos
-  paylink.ts         Fragment payload encode/decode + ZIP-321
-  username.ts        Public name rules
-server/              Hono API + signed claim store
-docs/                Privacy model, architecture, testnet guide
-scripts/             Dev-only signature smoke test
+src/
+  pages/        Home (landing + dashboard), Send, Receive, Pay, SealedPay, Profile, Settings, Privacy
+  components/   Layout, claim modal, QR, receipt toggle, tx rows
+  lib/          Noir adapter, directory + own-name lookup, sealed requests, receipts,
+                USD price, wallet error messages, scroll reveal
+shared/         Used by browser and server
+  zip316.ts     Unified address codec (Bech32m, F4Jumble, receivers)
+  address.ts    Shielded / mixed / transparent classification
+  claim.ts      Signed claim message + verification
+  memo.ts       Receipt memos and signed-receipt message
+  paylink.ts    Request payload + ZIP-321 URIs
+  amount.ts     Exact zatoshi arithmetic
+server/         Hono API, Postgres/JSON store
+deploy/         systemd unit + Caddyfile for the VPS option
+docs/           Privacy model, architecture, deployment, testnet guide
 ```
 
-## API
+## Known limitations
 
-The public API is tiny on purpose.
-
-| Method | Path             | Purpose                                                         |
-| ------ | ---------------- | --------------------------------------------------------------- |
-| `GET`  | `/api/directory` | Full snapshot of verified, wallet-signed name records           |
-| `POST` | `/api/claims`    | Publish a name claim, signed by the wallet (nonce + signature)  |
-| `GET`  | `/api/health`    | Liveness and claim count                                        |
-
-There is **no** endpoint that resolves a single name, and no endpoint that receives payment data.
-The client downloads the snapshot and resolves names locally.
-
-## Deployment
-
-The app is a single Node service. Build it, then run `npm start` behind HTTPS. Environment:
-
-| Variable            | Meaning                                                        |
-| ------------------- | -------------------------------------------------------------- |
-| `PORT`              | API/static port (default `8787`)                               |
-| `ZAC_DATA_DIR`      | Directory for `claims.json` (default `server/data`)            |
-| `VITE_API_BASE_URL` | Optional absolute API base if the UI is hosted separately      |
-| `VITE_SOURCE_URL`   | Optional link to the source repository shown in Settings       |
-
-The directory store must survive restarts for names to persist. Mount a volume or swap the store for
-a database before a real launch. The app never stores payment data, so a database only needs the
-public claim records.
-
-## Status & limitations
-
-Zac is a hackathon build, not audited. Names are global across testnet/mainnet in this version (the
-signed message binds the network, so a claim cannot be replayed on the other network). The directory
-is a public phone book by design. A name binds to a wallet-supplied shielded address with a signature
-from the wallet's derived transparent key — it is an attestation, not a zero-knowledge proof of
-shielded-key ownership. See the privacy model for the full list.
+- **Not audited.** Hackathon software; an internal privacy review is reflected in the privacy model.
+- **Noir testnet sends fail today.** Noir v1.0.39 (testnet build) stamps transactions with a
+  pre-NU6.3 consensus branch ID, so testnet nodes reject them. Zac explains the error and nothing is
+  spent. Mainnet works.
+- **One recipient per transaction.** Split payments in a single transaction need multi-output signing,
+  which Noir's dApp API and Zodl's QR flow do not expose yet. Zac does not fake it.
+- **A signed receipt is proof of payment** the recipient can show to others; that is why signing is
+  opt-in.
+- Names claimed from the same wallet share a public signing key, so they are linkable; use a
+  separate wallet per identity.
+- Sealed links store ciphertext on the server, so the server and its hosting providers can see that
+  a request was created and later opened from two network connections (never what it says).
+- Names are a public phone book, global across mainnet and testnet. A claim attests that the wallet
+  supplied the address; it is not a zero-knowledge proof of key ownership.
 
 ## License
 

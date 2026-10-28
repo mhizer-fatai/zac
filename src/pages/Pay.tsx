@@ -417,6 +417,10 @@ export function PayPage({
             <CopyButton value={zipUri} label="Copy URI" />
             <CopyButton value={payload.to} label="Copy address" />
           </div>
+          <p className="field-hint">
+            This code is a standard wallet request: anyone who scans it or sees your screen can read the
+            address, amount and note.
+          </p>
           <div className="pay-side-foot">
             <ShieldCheck size={14} />
             <span>Only shielded addresses are accepted by Zac.</span>

@@ -1,31 +1,22 @@
 import { EyeOff, UserRound } from 'lucide-react'
-import { useCallback, useState } from 'react'
-
-const STORAGE_KEY = 'zac.revealName.v1'
+import { useEffect, useState } from 'react'
 
 /**
- * Whether the payer's @name goes into the encrypted receipt memo. Off by
- * default: a payment carries no sender identity unless the payer opts in.
- * The choice is remembered in this browser only.
+ * Whether the payer's @name goes into the encrypted receipt memo. Off for
+ * every payment: the choice is deliberately not remembered, so signing once
+ * for a friend never silently de-anonymises a later payment.
  */
 export function useRevealName(): [boolean, (next: boolean) => void] {
-  const [reveal, setReveal] = useState(() => {
+  const [reveal, setReveal] = useState(false)
+  useEffect(() => {
+    // Earlier versions persisted the choice; clear it.
     try {
-      return localStorage.getItem(STORAGE_KEY) === '1'
-    } catch {
-      return false
-    }
-  })
-  const update = useCallback((next: boolean) => {
-    setReveal(next)
-    try {
-      if (next) localStorage.setItem(STORAGE_KEY, '1')
-      else localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem('zac.revealName.v1')
     } catch {
       /* storage may be unavailable */
     }
   }, [])
-  return [reveal, update]
+  return [reveal, setReveal]
 }
 
 export function RevealNameToggle({

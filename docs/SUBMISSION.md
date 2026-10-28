@@ -3,7 +3,7 @@
 **Track:** 01 — Shielded Payments ($15,000)
 
 **One-liner:** Zac is a private Zcash payments app: claim `@you`, share a server-blind payment link,
-and send shielded ZEC in two clicks. No accounts, no analytics, no payment graph.
+and send shielded ZEC in two clicks. No accounts, no analytics, no payment graph on-chain or in Zac's database.
 
 ## The problem
 
