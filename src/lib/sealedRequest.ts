@@ -68,13 +68,16 @@ export function parseSealedToken(token: string): { id: string; key: string } | n
 }
 
 /** Encrypt the request, store the ciphertext, and return the link token. */
-export async function createSealedRequest(encodedPayload: string): Promise<{ token: string; expiresAt: number }> {
+export async function createSealedRequest(
+  encodedPayload: string,
+  options: { ttl?: '24h' } = {}
+): Promise<{ token: string; expiresAt: number }> {
   const { ciphertext, key } = await encryptRequest(encodedPayload)
   const response = await fetch(`${API_BASE}/api/requests`, {
     method: 'POST',
     credentials: 'omit',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ ciphertext })
+    body: JSON.stringify({ ciphertext, ttl: options.ttl })
   })
   const body = (await response.json().catch(() => ({}))) as { id?: string; expiresAt?: number; error?: string }
   if (!response.ok || !body.id || !body.expiresAt) throw new Error(body.error ?? 'Could not create the payment link.')

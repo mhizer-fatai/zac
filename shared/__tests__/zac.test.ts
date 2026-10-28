@@ -22,6 +22,8 @@ import { findOwnClaim } from '../../src/lib/directory'
 import { describeWalletError } from '../../src/lib/walletErrors'
 import { formatUsd, usdToZec, zecToUsd } from '../../src/lib/price'
 import { decryptRequest, encryptRequest, parseSealedToken } from '../../src/lib/sealedRequest'
+import { divideTotal, shareStatus } from '../../src/lib/split'
+import type { WalletTx } from '../../src/lib/wallet'
 import {
   buildPaymentMemo,
   cleanMemo,
@@ -430,5 +432,23 @@ describe('sealed payment requests', () => {
     expect(parseSealedToken(`${id}.${key}`)).toEqual({ id, key })
     expect(parseSealedToken(`${id}${key}`)).toBeNull()
     expect(parseSealedToken(`${id}.short`)).toBeNull()
+  })
+})
+
+describe('bill splits', () => {
+  it('divides in whole zatoshi without ever overcharging', () => {
+    expect(divideTotal('0.184', 4)).toBe('0.046')
+    expect(divideTotal('1', 3)).toBe('0.33333333')
+    expect(zecToZatoshi(divideTotal('1', 3)) * 3n).toBeLessThanOrEqual(zecToZatoshi('1'))
+    expect(() => divideTotal('1', 0)).toThrow()
+  })
+
+  it('marks a share paid only from its own code in an incoming memo', () => {
+    const share = { invoiceId: 'maya42', amount: '0.046' }
+    const tx = (over: Partial<WalletTx>): WalletTx => ({ txid: 't', type: 'receive', amount: '0.046', status: 'mined', timestamp: 0, memo: 'zac1|maya42|-|Friday dinner · split', ...over })
+    expect(shareStatus([tx({})], share)).toMatchObject({ status: 'paid' })
+    expect(shareStatus([tx({ amount: '0.01' })], share).status).toBe('partial')
+    expect(shareStatus([tx({ memo: 'zac1|noah7|-|x' })], share).status).toBe('pending')
+    expect(shareStatus([tx({ type: 'send' })], share).status).toBe('pending')
   })
 })

@@ -25,6 +25,9 @@ verified".
 - **Sealed payment links.** Ask for money with a link like `https://zacpay.netlify.app/#/r/<id>.<key>`.
   The request (who to pay, how much, why) is **encrypted in your browser**; Zac stores only ciphertext
   and the key never leaves the link. Each link works for **one payment within 30 minutes**, then dies.
+- **Split a bill.** Enter a total (ZEC or USD) and who shares it. Each person gets their own sealed
+  link for their share (24 hours, one payment), and you see **Paid ✓ / Pending** per person, confirmed
+  from your own wallet. Names never leave your device.
 - **Pay from any wallet.** Opening a link shows who you are paying (with a verified name), the amount
   and the note. Pay with Noir in the browser, or tap **Open in wallet app** / scan the ZIP-321 QR to
   pay from Zodl, Zingo!, Ywallet or any shielded wallet.

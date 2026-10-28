@@ -1,4 +1,4 @@
-import { ArrowDownToLine, Home, Send, Settings } from 'lucide-react'
+import { ArrowDownToLine, Home, Send, Settings, Users } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { cn } from '../lib/format'
@@ -22,6 +22,7 @@ const navItems = [
   { to: '/', label: 'Home', icon: Home, end: true },
   { to: '/send', label: 'Send', icon: Send, end: false },
   { to: '/receive', label: 'Receive', icon: ArrowDownToLine, end: false },
+  { to: '/split', label: 'Split', icon: Users, end: false },
   { to: '/settings', label: 'Settings', icon: Settings, end: false }
 ]
 

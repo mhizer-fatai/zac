@@ -127,6 +127,16 @@ decrypts it in the payer’s browser.
 - **What it does not protect.** Anyone who has the full link before it is paid or expires can open
   it. The “Any wallet” ZIP-321 QR is a standard, unsealed request so other wallets can read it.
 
+### Bill splits
+
+Split creates one sealed link per person (same encryption as above, with a 24-hour lifetime because
+bills are settled later). Each link shows its payer only their own share; the note carries the bill
+title, never names. **Names stay in the organiser’s browser** (local storage) and are never sent
+anywhere. A share is marked paid when the organiser’s own wallet history shows an incoming payment
+whose encrypted memo carries that share’s code, so no server tracks who paid. Payments from other
+wallets carry the same code via the ZIP-321 memo. The server can see that one connection created
+several requests at once (the group size), never who they are for or how much.
+
 ## 4. Names and the directory
 
 Names are a public addressing layer. `@alice` maps to Alice's shielded address; this is public by

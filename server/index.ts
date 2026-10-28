@@ -229,6 +229,8 @@ async function refreshPrice(): Promise<void> {
 /* ciphertext, for 30 minutes, until it is paid once.                  */
 /* ------------------------------------------------------------------ */
 const REQUEST_TTL_MS = 30 * 60 * 1000
+// Bill-split shares are settled later, so they may opt into a 24-hour lifetime.
+const SPLIT_TTL_MS = 24 * 60 * 60 * 1000
 const REQUEST_ID = /^[A-Za-z0-9_-]{22}$/
 const requestBuckets = new Map<string, { count: number; resetAt: number }>()
 
@@ -251,7 +253,7 @@ setInterval(() => void purgeExpiredRequests(Date.now()).catch(() => {}), 5 * 60 
 
 app.post('/api/requests', async (c) => {
   if (!allowRequestCreate(c.req.raw.headers)) return c.json({ error: 'Too many requests. Try again later.' }, 429)
-  let body: { ciphertext?: unknown }
+  let body: { ciphertext?: unknown; ttl?: unknown }
   try {
     body = await c.req.json()
   } catch {
@@ -260,7 +262,7 @@ app.post('/api/requests', async (c) => {
   const ciphertext = typeof body.ciphertext === 'string' ? body.ciphertext : ''
   if (!/^[A-Za-z0-9_-]{40,4000}$/.test(ciphertext)) return c.json({ error: 'Invalid request data.' }, 400)
   const id = randomBytes(16).toString('base64url')
-  const expiresAt = Date.now() + REQUEST_TTL_MS
+  const expiresAt = Date.now() + (body.ttl === '24h' ? SPLIT_TTL_MS : REQUEST_TTL_MS)
   try {
     await createRequest(id, ciphertext, expiresAt)
   } catch (error) {

@@ -26,6 +26,7 @@ import { shortAddress, timeAgo } from '../lib/format'
 import { useDirectory, useOwnClaim } from '../lib/directory'
 import { formatUsd, useZecPrice, zecToUsd } from '../lib/price'
 import { buildReceiptMemo } from '../lib/receipt'
+import { buildPaymentMemo } from '../../shared/memo'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
 import { useWalletData } from '../lib/useWalletData'
@@ -102,7 +103,13 @@ export function PayPage({
   const zipUri = useMemo(
     () =>
       payload
-        ? buildZip321Uri({ ...payload, a: payload.a ?? (amountValid ? amount : undefined) })
+        ? buildZip321Uri({
+            ...payload,
+            a: payload.a ?? (amountValid ? amount : undefined),
+            // Carry the request code in the memo, as a Zac payment does, so the
+            // requester can recognise payments made from other wallets too.
+            m: buildPaymentMemo({ invoiceId: payload.i, note: payload.m })
+          })
         : '',
     [payload, amount, amountValid]
   )
