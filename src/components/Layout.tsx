@@ -8,6 +8,7 @@ import { Avatar } from './Avatar'
 import { Logo } from './Logo'
 import { NetworkBadge } from './NetworkBadge'
 import { scrollToSection, shortAddress } from '../lib/format'
+import { useScrollReveal } from '../lib/reveal'
 
 const SOURCE_URL = (import.meta.env.VITE_SOURCE_URL as string | undefined) ?? ''
 
@@ -26,6 +27,7 @@ const navItems = [
 
 export function Layout() {
   const location = useLocation()
+  useScrollReveal()
   const { connection, status, connect } = useWallet()
   const handle = useOwnClaim()?.username
 

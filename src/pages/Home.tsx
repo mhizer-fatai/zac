@@ -55,7 +55,7 @@ export function Home() {
     const recent = (history ?? []).slice(0, 5)
     return (
       <div className="page home-page">
-        <section className="dash-head">
+        <section className="dash-head reveal">
           <div>
             <p className="eyebrow">Account</p>
             <h1 className="dash-title">
@@ -81,7 +81,7 @@ export function Home() {
           </div>
         </section>
 
-        <div className="dash-grid">
+        <div className="dash-grid reveal-stagger">
           <section className="card balance-card">
             <div className="card-topline">
               <span className="chip chip-gold">
@@ -169,7 +169,7 @@ export function Home() {
           </section>
         </div>
 
-        <section className="card activity-card">
+        <section className="card activity-card reveal">
           <div className="section-head">
             <div>
               <p className="eyebrow">Wallet history</p>
@@ -199,7 +199,7 @@ export function Home() {
           )}
         </section>
 
-        <section className="privacy-strip">
+        <section className="privacy-strip reveal">
           <div>
             <Lock size={16} />
             <span>Shielded transactions only</span>
@@ -227,7 +227,7 @@ export function Home() {
   return (
     <div className="landing">
       <section className="lp-hero">
-        <div className="lp-hero-copy">
+        <div className="lp-hero-copy reveal">
           <p className="lp-pill">
             <span className="lp-pill-dot" /> Private payments on Zcash
           </p>
@@ -261,7 +261,7 @@ export function Home() {
           ) : null}
         </div>
 
-        <div className="lp-hero-visual" aria-hidden="true">
+        <div className="lp-hero-visual reveal reveal-late" aria-hidden="true">
           <div className="lp-request">
             <div className="lp-request-head">
               <span className="lp-avatar">al</span>
@@ -293,9 +293,9 @@ export function Home() {
       </section>
 
       <section className="lp-section" id="how">
-        <p className="lp-eyebrow">How it works</p>
-        <h2>Three steps. No account.</h2>
-        <div className="lp-steps">
+        <p className="lp-eyebrow reveal">How it works</p>
+        <h2 className="reveal">Three steps. No account.</h2>
+        <div className="lp-steps reveal-stagger">
           <article className="lp-step">
             <div className="lp-step-top">
               <span className="step-number">01</span>
@@ -327,12 +327,12 @@ export function Home() {
       </section>
 
       <section className="lp-section" id="privacy">
-        <p className="lp-eyebrow">Privacy model</p>
-        <h2>Who sees what</h2>
-        <p className="lp-lead">
+        <p className="lp-eyebrow reveal">Privacy model</p>
+        <h2 className="reveal">Who sees what</h2>
+        <p className="lp-lead reveal">
           Zcash keeps payment details off the public chain. Zac is designed so they never reach our server either.
         </p>
-        <div className="lp-table-wrap">
+        <div className="lp-table-wrap reveal">
           <table className="lp-table">
             <thead>
               <tr>
@@ -354,7 +354,7 @@ export function Home() {
             </tbody>
           </table>
         </div>
-        <p className="lp-footnote">
+        <p className="lp-footnote reveal">
           <Info size={14} />
           <span>
             Names are public by design; payments are not. Light-wallet servers can observe network metadata such
@@ -365,9 +365,9 @@ export function Home() {
       </section>
 
       <section className="lp-section" id="verify">
-        <p className="lp-eyebrow">Verifiable</p>
-        <h2>Verify it yourself</h2>
-        <div className="lp-verify">
+        <p className="lp-eyebrow reveal">Verifiable</p>
+        <h2 className="reveal">Verify it yourself</h2>
+        <div className="lp-verify reveal-stagger">
           <article className="lp-verify-card">
             <div className="lp-verify-head">
               <h3>Links stay local</h3>
@@ -401,9 +401,9 @@ export function Home() {
       </section>
 
       <section className="lp-section lp-receipts">
-        <p className="lp-eyebrow">Receipts</p>
-        <h2>Anonymous by default. Verifiable on request.</h2>
-        <div className="lp-receipt-list" aria-hidden="true">
+        <p className="lp-eyebrow reveal">Receipts</p>
+        <h2 className="reveal">Anonymous by default. Verifiable on request.</h2>
+        <div className="lp-receipt-list reveal" aria-hidden="true">
           <div className="lp-receipt">
             <span className="lp-avatar">bo</span>
             <div>
@@ -426,13 +426,13 @@ export function Home() {
             <span className="lp-receipt-amount">+0.80 ZEC</span>
           </div>
         </div>
-        <p className="lp-caption">
+        <p className="lp-caption reveal">
           Payments include no sender information unless the payer chooses to share it. Shared names are signed by
           the payer's wallet and cannot be impersonated.
         </p>
       </section>
 
-      <section className="lp-cta">
+      <section className="lp-cta reveal-stagger">
         <span className="lp-cta-icon"><AtSign size={22} /></span>
         <h2>Start receiving private payments.</h2>
         <button type="button" className="btn btn-primary btn-lg" onClick={handleClaim}>

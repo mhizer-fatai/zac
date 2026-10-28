@@ -1534,3 +1534,31 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
   .menu-list { left: 0; right: 0; width: auto; }
   .request-modal .request-result { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Scroll reveal (see src/lib/reveal.ts): fade and rise into place once. */
+.reveal,
+.reveal-stagger > * {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.reveal.is-visible,
+.reveal-stagger.is-visible > * {
+  opacity: 1;
+  transform: none;
+}
+.reveal-late { transition-delay: 0.15s; }
+.reveal-stagger.is-visible > :nth-child(2) { transition-delay: 0.1s; }
+.reveal-stagger.is-visible > :nth-child(3) { transition-delay: 0.2s; }
+.reveal-stagger.is-visible > :nth-child(4) { transition-delay: 0.3s; }
+.reveal-stagger.is-visible > :nth-child(n + 5) { transition-delay: 0.4s; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal-stagger > * {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
