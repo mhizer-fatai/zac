@@ -1693,3 +1693,83 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
 .split-item:hover { border-color: var(--line-strong); }
 .split-item span:first-child { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .split-item small { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+/* Landing hero: phone mockups of real Zac screens (pure CSS, no images) */
+.phones { position: relative; height: 560px; }
+.phone {
+  position: absolute;
+  top: 0;
+  width: 268px;
+  height: 540px;
+  padding: 34px 20px 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: 38px;
+  background: linear-gradient(180deg, #131a26 0%, var(--panel) 100%);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.8), inset 0 0 0 6px #0b0e14;
+  overflow: hidden;
+}
+.phone-back { right: -28px; top: 34px; transform: rotate(6deg); opacity: 0.92; }
+.phone-front { left: -12px; transform: rotate(-5deg); z-index: 1; animation: phone-float 6s ease-in-out infinite; }
+@keyframes phone-float {
+  0%, 100% { transform: rotate(-5deg) translateY(0); }
+  50% { transform: rotate(-5deg) translateY(-10px); }
+}
+.phone-notch { position: absolute; top: 12px; left: 50%; width: 76px; height: 18px; margin-left: -38px; border-radius: 999px; background: #05070b; }
+.phone-eyebrow { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
+.phone-gap { margin-top: 22px; }
+.phone-title { margin-top: 4px; font-size: 17px; font-weight: 600; }
+.phone-sub { font-size: 12px; color: var(--muted); }
+.phone-balance { margin-top: 10px; font-size: 32px; font-weight: 600; letter-spacing: -0.03em; }
+.phone-balance span { font-size: 14px; color: var(--muted); letter-spacing: 0; }
+.phone-usd { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.phone-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 18px; }
+.phone-actions span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-2);
+  font-size: 11px;
+  color: var(--text);
+}
+.phone-actions svg { color: var(--gold); }
+.phone-tx { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.phone-tx span { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.phone-tx small { font-size: 10.5px; color: var(--muted-2); }
+.phone-tx em { display: inline-flex; margin-left: 4px; padding: 0 5px; font-size: 9px; font-style: normal; vertical-align: 1px; }
+.phone-tx b, .phone-row b { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+.phone-tx b.is-in { color: var(--green); }
+.phone-bar { height: 5px; margin: 16px 0 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.phone-bar span { display: block; width: 50%; height: 100%; background: var(--green); }
+.phone-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.phone-row b { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; }
+.phone-row b.is-paid { color: var(--green); }
+.phone-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 42px;
+  margin-top: 20px;
+  border-radius: 12px;
+  background: var(--gold);
+  color: #0b0e14;
+  font-size: 13px;
+  font-weight: 600;
+}
+.phone-foot { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 10px; font-family: var(--mono); font-size: 10px; color: var(--muted-2); }
+
+@media (max-width: 960px) {
+  .phones { width: min(520px, 100%); margin: 0 auto; }
+}
+@media (max-width: 560px) {
+  .phones { height: 520px; }
+  .phone-back { display: none; }
+  .phone-front { left: 50%; margin-left: -134px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .phone-front { animation: none; }
+}

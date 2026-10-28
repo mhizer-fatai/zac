@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Sparkles,
   SquareTerminal,
+  Users,
   Wallet
 } from 'lucide-react'
 import { useState } from 'react'
@@ -267,32 +268,49 @@ export function Home() {
         </div>
 
         <div className="lp-hero-visual reveal reveal-late" aria-hidden="true">
-          <div className="lp-request">
-            <div className="lp-request-head">
-              <span className="lp-avatar">al</span>
-              <div>
-                <div className="lp-request-name">
-                  @alice <span className="badge-verified"><CircleCheck size={12} /> verified</span>
-                </div>
-                <span className="lp-mono-sub">u1qd8…x8f2 · shielded</span>
+          <div className="phones">
+            <div className="phone phone-back">
+              <div className="phone-notch" />
+              <p className="phone-eyebrow">Wallet</p>
+              <p className="phone-sub">Shielded balance</p>
+              <p className="phone-balance">0.4721 <span>ZEC</span></p>
+              <p className="phone-usd">≈ $612.30</p>
+              <div className="phone-actions">
+                <span><Send size={15} /> Send</span>
+                <span><ArrowDownToLine size={15} /> Receive</span>
+                <span><Users size={15} /> Split</span>
               </div>
-              <ShieldCheck size={18} className="lp-request-shield" />
+              <p className="phone-eyebrow phone-gap">Recent activity</p>
+              <div className="phone-tx">
+                <span>
+                  From @maya <em className="badge-verified"><CircleCheck size={10} /> verified</em>
+                  <small>Friday dinner · split</small>
+                </span>
+                <b className="is-in">+$46.00</b>
+              </div>
+              <div className="phone-tx">
+                <span>
+                  Received privately
+                  <small>No sender · encrypted memo</small>
+                </span>
+                <b className="is-in">+$120.00</b>
+              </div>
             </div>
-            <span className="lp-label">Requested amount</span>
-            <div className="lp-amount">0.25 <span>ZEC</span></div>
-            <div className="lp-note">
-              <span className="lp-label"><Lock size={11} /> Private note</span>
-              <em>“Lunch on Friday”</em>
+
+            <div className="phone phone-front">
+              <div className="phone-notch" />
+              <p className="phone-eyebrow">New split</p>
+              <p className="phone-title">Friday dinner</p>
+              <p className="phone-balance">$184.00</p>
+              <p className="phone-sub">4 people · $46.00 each</p>
+              <div className="phone-bar"><span /></div>
+              <div className="phone-row"><span>You</span><b className="is-paid"><Check size={11} /> Paid</b></div>
+              <div className="phone-row"><span>Maya</span><b className="is-paid"><Check size={11} /> Paid</b></div>
+              <div className="phone-row"><span>Noah</span><b>Pending</b></div>
+              <div className="phone-row"><span>Ade</span><b>Pending</b></div>
+              <div className="phone-cta"><Lock size={14} /> Share sealed links</div>
+              <p className="phone-foot"><Lock size={10} /> Names stay on this phone</p>
             </div>
-            <div className="lp-pay">Pay 0.25 ZEC privately <ArrowRight size={16} /></div>
-            <p className="lp-request-foot"><Lock size={12} /> Link data never reaches the server</p>
-          </div>
-          <div className="lp-callout">
-            <Braces size={14} />
-            <span>
-              Request details live after the <code>#</code> in the link. Browsers never send that part to a
-              server.
-            </span>
           </div>
         </div>
       </section>
