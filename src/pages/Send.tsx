@@ -1,5 +1,6 @@
 import {
   ArrowLeftRight,
+  Clock,
   ArrowLeft,
   Check,
   Lock,
@@ -216,7 +217,7 @@ export function SendPage() {
             <Check size={30} />
           </div>
           <p className="eyebrow">Shielded payment</p>
-          <h1>Sent privately</h1>
+          <h1>Payment submitted</h1>
           <p className="success-amount">
             {formatAmount(lastAmount)} <span>ZEC</span>
           </p>
@@ -226,19 +227,24 @@ export function SendPage() {
               to {lastRecipient.claim ? `@${lastRecipient.claim.username}` : shortAddress(lastRecipient.address, 12, 8)}
             </p>
           ) : null}
+          <p className="submitted-status">
+            <Clock size={14} /> Broadcast to the Zcash network · confirms in a few minutes
+          </p>
           <div className="txid-box">
             <span>Transaction</span>
             <code>{txid}</code>
             <CopyButton value={txid} iconOnly />
           </div>
           <p className="muted small">
-            The recipient will see a private receipt memo in their wallet. Nobody else can read it.
+            Your wallet has submitted this shielded payment. It is final once it is included in a block; follow it
+            under Recent activity. The recipient sees it, with its encrypted receipt, after their wallet syncs.
+            Nobody else can read the details. You can close your wallet window.
           </p>
           <div className="success-actions">
-            <button type="button" className="btn btn-primary" onClick={reset}>
+            <Link to="/" className="btn btn-primary">View activity</Link>
+            <button type="button" className="btn btn-secondary" onClick={reset}>
               Send another
             </button>
-            <Link to="/" className="btn btn-secondary">Done</Link>
           </div>
         </div>
       </div>
