@@ -22,6 +22,7 @@ import { Spinner } from '../components/Spinner'
 import { formatAmount } from '../../shared/amount'
 import { shortAddress, timeAgo } from '../lib/format'
 import { useDirectory, useOwnClaim } from '../lib/directory'
+import { formatUsd, useZecPrice, zecToUsd } from '../lib/price'
 import { buildReceiptMemo } from '../lib/receipt'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
@@ -43,6 +44,7 @@ export function PayPage() {
   const payload: PaymentPayload | null = decoded.ok ? decoded.payload : null
   const claim = payload?.h ? resolve(payload.h) : undefined
   const ownClaim = useOwnClaim()
+  const usdPrice = useZecPrice(payload?.net)
   const [revealName, setRevealName] = useRevealName()
 
   const [customAmount, setCustomAmount] = useState('')
@@ -231,7 +233,11 @@ export function PayPage() {
               <div className="pay-amount">
                 {formatAmount(payload.a)} <span>ZEC</span>
               </div>
-            ) : (
+            ) : null}
+            {payload.a && usdPrice !== null ? (
+              <p className="pay-usd">≈ {formatUsd(zecToUsd(payload.a, usdPrice))}</p>
+            ) : null}
+            {payload.a ? null : (
               <label className="field pay-amount-field">
                 <span>Amount</span>
                 <div className="amount-input">
@@ -247,6 +253,8 @@ export function PayPage() {
                 </div>
                 {!amountValid && customAmount ? (
                   <span className="field-hint tone-error">Enter a valid amount.</span>
+                ) : amountValid && usdPrice !== null ? (
+                  <span className="field-hint usd-hint">≈ {formatUsd(zecToUsd(customAmount, usdPrice))}</span>
                 ) : null}
               </label>
             )}

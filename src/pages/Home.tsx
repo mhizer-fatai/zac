@@ -24,6 +24,7 @@ import { formatAmount } from '../../shared/amount'
 import { scrollToSection, shortAddress } from '../lib/format'
 import { profileLink } from '../lib/links'
 import { useOwnClaim } from '../lib/directory'
+import { formatUsd, useZecPrice, zecToUsd } from '../lib/price'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
 import { useWalletData } from '../lib/useWalletData'
@@ -42,6 +43,7 @@ export function Home() {
   const [claimOpen, setClaimOpen] = useState(false)
   const { balance, history, loading, error, refresh } = useWalletData(status === 'connected')
   const ownClaim = useOwnClaim()
+  const usdPrice = useZecPrice(connection?.network)
 
   async function handleConnect() {
     try {
@@ -106,6 +108,9 @@ export function Home() {
                 </>
               )}
             </div>
+            {usdPrice !== null && balance ? (
+              <p className="balance-usd">≈ {formatUsd(zecToUsd(balance.shielded, usdPrice))}</p>
+            ) : null}
             <p className="balance-sub">
               Private, spendable ZEC. Transparent funds are never used for Zac payments.
             </p>

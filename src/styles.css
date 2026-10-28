@@ -1562,3 +1562,31 @@ textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
     transition: none;
   }
 }
+
+/* USD estimates (mainnet only; see src/lib/price.ts) */
+.unit-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  padding: 5px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.unit-toggle:hover { color: var(--text); border-color: var(--gold-line); }
+.usd-hint { font-family: var(--mono); color: var(--muted); }
+.balance-usd {
+  position: relative;
+  z-index: 1;
+  margin: -4px 0 10px;
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--muted);
+}
+.pay-usd, .preview-usd, .success-usd { margin-top: 4px; font-family: var(--mono); font-size: 14px; color: var(--muted); }

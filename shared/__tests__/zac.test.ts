@@ -20,6 +20,7 @@ import {
 import { buildClaimMessage, normalizePubkey, verifyClaim } from '../claim'
 import { findOwnClaim } from '../../src/lib/directory'
 import { describeWalletError } from '../../src/lib/walletErrors'
+import { formatUsd, usdToZec, zecToUsd } from '../../src/lib/price'
 import {
   buildPaymentMemo,
   cleanMemo,
@@ -383,5 +384,28 @@ describe('wallet error messages', () => {
   it('passes unknown errors through and falls back when empty', () => {
     expect(describeWalletError(new Error('Something specific broke'))).toBe('Something specific broke')
     expect(describeWalletError(undefined, 'The payment did not go through.')).toBe('The payment did not go through.')
+  })
+})
+
+describe('USD estimates', () => {
+  it('converts USD to ZEC, rounding down to whole zatoshi', () => {
+    expect(usdToZec('10', 25)).toBe('0.4')
+    expect(usdToZec('1', 3)).toBe('0.33333333')
+    expect(usdToZec('8.10', 1275.35)).toBe(zatoshiToZec(BigInt(Math.floor((8.1 * 1e8) / 1275.35))))
+  })
+
+  it('rejects invalid USD input', () => {
+    expect(usdToZec('', 25)).toBeNull()
+    expect(usdToZec('abc', 25)).toBeNull()
+    expect(usdToZec('1.234', 25)).toBeNull()
+    expect(usdToZec('0', 25)).toBeNull()
+    expect(usdToZec('5', 0)).toBeNull()
+  })
+
+  it('converts ZEC to USD and formats it', () => {
+    expect(zecToUsd('0.5', 30)).toBe(15)
+    expect(formatUsd(8.098)).toBe('$8.10')
+    expect(formatUsd(0.004)).toBe('< $0.01')
+    expect(formatUsd(0)).toBe('$0.00')
   })
 })

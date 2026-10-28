@@ -1,4 +1,5 @@
 import {
+  ArrowLeftRight,
   ArrowLeft,
   Check,
   Lock,
@@ -25,6 +26,7 @@ import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
 import { useWalletData } from '../lib/useWalletData'
 import { describeWalletError } from '../lib/walletErrors'
+import { formatUsd, usdToZec, useZecPrice, zecToUsd } from '../lib/price'
 
 interface ResolvedRecipient {
   address: string
@@ -65,7 +67,8 @@ export function SendPage() {
   const [searchParams] = useSearchParams()
 
   const [recipientInput, setRecipientInput] = useState(searchParams.get('to') ?? '')
-  const [amount, setAmount] = useState('')
+  const [entry, setEntry] = useState('')
+  const [unit, setUnit] = useState<'ZEC' | 'USD'>('ZEC')
   const [note, setNote] = useState('')
   const [sending, setSending] = useState(false)
   const [maxLoading, setMaxLoading] = useState(false)
@@ -85,7 +88,12 @@ export function SendPage() {
   const networkMismatch =
     Boolean(recipient && connection && recipient.network !== connection.network)
   const recipientError = resolved.error
+  const usdPrice = useZecPrice(connection?.network)
+  const usdMode = unit === 'USD' && usdPrice !== null
+  // In USD mode the payment is the ZEC equivalent, rounded down to whole zatoshi.
+  const amount = usdMode ? (usdToZec(entry, usdPrice) ?? '') : entry
   const amountValid = isValidAmount(amount) && Number(amount) > 0
+  const entryInvalid = Boolean(entry) && !amountValid
   const noteBytes = bytesLength(note)
   const noteValid = noteBytes <= 300
   const canSend =
@@ -117,7 +125,8 @@ export function SendPage() {
     try {
       const max = await adapter.getMaxTransfer(recipient.address, memo)
       if (max) {
-        setAmount(max.maxAmount)
+        setUnit('ZEC')
+        setEntry(max.maxAmount)
         toast.info(`Max after the ${formatAmount(max.fee)} ZEC network fee`)
       }
     } catch (cause) {
@@ -163,7 +172,7 @@ export function SendPage() {
 
   function reset() {
     setTxid(null)
-    setAmount('')
+    setEntry('')
     setNote('')
     setRecipientInput('')
     setError(null)
@@ -211,6 +220,7 @@ export function SendPage() {
           <p className="success-amount">
             {formatAmount(lastAmount)} <span>ZEC</span>
           </p>
+          {usdPrice !== null ? <p className="success-usd">≈ {formatUsd(zecToUsd(lastAmount, usdPrice))}</p> : null}
           {lastRecipient ? (
             <p className="muted">
               to {lastRecipient.claim ? `@${lastRecipient.claim.username}` : shortAddress(lastRecipient.address, 12, 8)}
@@ -280,24 +290,51 @@ export function SendPage() {
             <span>Amount</span>
             <div className="amount-input">
               <input
-                value={amount}
-                onChange={(event) => setAmount(event.target.value.replace(',', '.'))}
+                value={entry}
+                onChange={(event) => setEntry(event.target.value.replace(',', '.'))}
                 placeholder="0.00"
                 inputMode="decimal"
                 autoComplete="off"
-                className={amount && !amountValid ? 'is-invalid' : undefined}
+                className={entryInvalid ? 'is-invalid' : undefined}
               />
-              <span className="amount-suffix">ZEC</span>
+              {usdPrice !== null ? (
+                <button
+                  type="button"
+                  className="unit-toggle"
+                  title={usdMode ? 'Enter the amount in ZEC' : 'Enter the amount in US dollars'}
+                  onClick={() => {
+                    // Carry the current value over to the other unit.
+                    if (usdMode) setEntry(amountValid ? amount : '')
+                    else setEntry(amountValid ? zecToUsd(amount, usdPrice).toFixed(2) : '')
+                    setUnit(usdMode ? 'ZEC' : 'USD')
+                  }}
+                >
+                  {usdMode ? 'USD' : 'ZEC'} <ArrowLeftRight size={12} />
+                </button>
+              ) : (
+                <span className="amount-suffix">ZEC</span>
+              )}
               <button type="button" className="max-btn" onClick={() => void handleMax()} disabled={!recipient || maxLoading}>
                 {maxLoading ? <Spinner size={13} /> : <Zap size={13} />} Max
               </button>
             </div>
-            {amount && !amountValid ? (
-              <span className="field-hint tone-error">Use a positive amount with at most 8 decimal places.</span>
+            {entryInvalid ? (
+              <span className="field-hint tone-error">
+                {usdMode
+                  ? 'Enter a dollar amount with at most 2 decimal places.'
+                  : 'Use a positive amount with at most 8 decimal places.'}
+              </span>
+            ) : amountValid && usdPrice !== null ? (
+              <span className="field-hint usd-hint">
+                {usdMode
+                  ? `Sends ${formatAmount(amount)} ZEC`
+                  : `≈ ${formatUsd(zecToUsd(amount, usdPrice))}`}
+              </span>
             ) : null}
             {balance ? (
               <span className="field-hint">
-                Available: {formatAmount(balance.shielded)} ZEC · wallet network fee is calculated at signing.
+                Available: {formatAmount(balance.shielded)} ZEC
+                {usdPrice !== null ? ` (≈ ${formatUsd(zecToUsd(balance.shielded, usdPrice))})` : ''} · wallet network fee is calculated at signing.
               </span>
             ) : null}
           </label>
@@ -354,6 +391,9 @@ export function SendPage() {
           <div className="preview-amount">
             {amount && amountValid ? formatAmount(amount) : '0.00'} <span>ZEC</span>
           </div>
+          {usdPrice !== null && amountValid ? (
+            <p className="preview-usd">≈ {formatUsd(zecToUsd(amount, usdPrice))}</p>
+          ) : null}
           <div className="preview-row">
             <span>Network</span>
             <NetworkBadge network={connection.network} />

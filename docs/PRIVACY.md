@@ -158,6 +158,12 @@ That is the entire database. No names are tied to accounts, emails, IPs or payme
 Other operational facts:
 
 - **No analytics, cookies, third-party scripts, fonts or CDNs.** Fonts and icons are bundled.
+- **USD estimates come through Zac's server.** On mainnet the app shows approximate USD values and
+  lets you type an amount in USD. The browser asks Zac's own `/api/price`; the server fetches the
+  ZEC/USD price from CoinGecko at most every five minutes and caches it, so CoinGecko never sees
+  users, and the CSP stays same-origin. The request carries no amount, address or name. Payments are
+  always made in ZEC: a USD entry is converted to ZEC (rounded down to whole zatoshi) and the exact
+  ZEC amount is shown before the wallet asks for approval.
 - **No request logging.** The Node process prints one startup line; Hono has no logger installed.
 - **Rate limiting** is an in-memory map keyed by a salted hash of the connection IP. The salt is
   generated per process; raw IPs are never written to disk.

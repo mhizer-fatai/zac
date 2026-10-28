@@ -186,6 +186,44 @@ app.post('/api/claims', async (c) => {
   return c.json({ claim: stored, result }, result === 'created' ? 201 : 200)
 })
 
+/* ------------------------------------------------------------------ */
+/* ZEC/USD price. Fetched server-side and cached, so the price source  */
+/* never sees users' IPs and the browser's CSP stays same-origin only. */
+/* A stale price is served if a refresh fails.                         */
+/* ------------------------------------------------------------------ */
+const PRICE_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=zcash&vs_currencies=usd'
+const PRICE_TTL_MS = 5 * 60 * 1000
+let price: { usd: number; fetchedAt: number } | null = null
+let priceRefresh: Promise<void> | null = null
+
+async function refreshPrice(): Promise<void> {
+  try {
+    const response = await fetch(PRICE_URL, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(8000)
+    })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const body = (await response.json()) as { zcash?: { usd?: unknown } }
+    const usd = body.zcash?.usd
+    if (typeof usd !== 'number' || !Number.isFinite(usd) || usd <= 0) throw new Error('bad price payload')
+    price = { usd, fetchedAt: Date.now() }
+  } catch (error) {
+    console.warn('[zac] price refresh failed:', error instanceof Error ? error.message : error)
+  }
+}
+
+app.get('/api/price', async (c) => {
+  if (!price || Date.now() - price.fetchedAt > PRICE_TTL_MS) {
+    priceRefresh ??= refreshPrice().finally(() => {
+      priceRefresh = null
+    })
+    await priceRefresh
+  }
+  if (!price) return c.json({ error: 'Price unavailable.' }, 503)
+  c.header('Cache-Control', 'no-cache')
+  return c.json({ usd: price.usd, updatedAt: price.fetchedAt, source: 'CoinGecko' })
+})
+
 app.all('/api/*', (c) => c.json({ error: 'Not found.' }, 404))
 
 /* ------------------------------------------------------------------ */

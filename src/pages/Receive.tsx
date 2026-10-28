@@ -9,6 +9,7 @@ import { copyText } from '../lib/clipboard'
 import { bytesLength } from '../lib/format'
 import { payLink, profileLink } from '../lib/links'
 import { useOwnClaim } from '../lib/directory'
+import { formatUsd, useZecPrice, zecToUsd } from '../lib/price'
 import { useToast } from '../lib/toast'
 import { useWallet } from '../lib/walletContext'
 import { describeWalletError } from '../lib/walletErrors'
@@ -206,6 +207,7 @@ function RequestModal({
   username?: string
 }) {
   const toast = useToast()
+  const usdPrice = useZecPrice(network)
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
   const [invoiceId, setInvoiceId] = useState(() => newInvoiceId())
@@ -252,7 +254,11 @@ function RequestModal({
             />
             <span className="amount-suffix">ZEC</span>
           </div>
-          {!amountValid ? <span className="field-hint tone-error">Invalid amount.</span> : null}
+          {!amountValid ? (
+            <span className="field-hint tone-error">Invalid amount.</span>
+          ) : amount && usdPrice !== null ? (
+            <span className="field-hint usd-hint">≈ {formatUsd(zecToUsd(amount, usdPrice))}</span>
+          ) : null}
         </label>
         <label className="field">
           <span>Private note <em>optional</em></span>
